@@ -1,0 +1,16 @@
+---
+version: 1
+task_definition:
+  ecs_network_mode: awsvpc
+
+  services:
+    macaroon_vault:
+      mem_limit: 512m
+      mem_reservation: 512m
+      essential: true
+
+run_params:
+  network_configuration:
+    awsvpc_configuration:
+      subnets: [ ${SUBNETS} ] # Beware of the hack here - SUBNETS is a list
+      security_groups: [ ${SG} ]

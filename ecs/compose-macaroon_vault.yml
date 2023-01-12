@@ -1,0 +1,14 @@
+---
+version: '3' # 3.2 is not supported
+services:
+
+  macaroon_vault:
+    ports:
+     - "1339:1339"
+    image: ${ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com/macaroon_vault:${TAG}
+    env_file:
+      - ./env-${ENV}
+    environment:
+      SENTRY_DSN: ${SENTRY_DSN}
+    logging:
+      driver: fluentd

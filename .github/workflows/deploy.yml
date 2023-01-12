@@ -1,0 +1,145 @@
+name: 'Deploy to staging'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+env:
+  ENV: staging
+  DOCKER_BUILDKIT: 1
+  TIMEOUT: 30 # minutes
+  FORCE_TIMEOUT: 1801 # seconds (TIMEOUT + 1 sec)
+  NIX_CHANNEL: "https://channels.nixos.org/nixos-22.11"
+
+#######
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    # https://dev.to/dtinth/caching-docker-builds-in-github-actions-which-approach-is-the-fastest-a-research-18ei
+    # Quote: Using buildx with GitHub cache yields the same (or sometimes even better) results and it's probably a better alternative
+    # in case of a multi-stage build which is quite common these days.
+    - uses: docker/setup-buildx-action@v2
+
+    - uses: actions/setup-go@v3
+      with:
+        go-version: '^1.18.0'
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1.7.0
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Prepare docker build
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # shellcheck disable=SC2086
+        echo "DESCRIBE=$(git describe)" >> $GITHUB_ENV
+
+    - name: Build and push container to ECR
+      uses: docker/build-push-action@v3
+      env:
+        TOKEN: ${{ secrets.PAT }}
+      with:
+        build-args: |
+          TOKEN=${{ secrets.PAT }}
+          DESCRIBE=${{ env.DESCRIBE }}
+        push: true
+        tags: ${{ steps.login-ecr.outputs.registry }}/macaroon_vault:${{ env.ENV }}
+        platforms: linux/amd64,linux/arm64
+        file: ./Dockerfile
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    needs: [container]
+    if: always() && (needs.container.result == 'success' || needs.container.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - name: Install nix
+      uses: cachix/install-nix-action@v18
+      with:
+        extra_nix_config: |
+          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+    - name: Deploy
+      env:
+        TOKEN: ${{ secrets.PAT }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        SENTRY_DSN_STAGING: ${{ secrets.SENTRY_DSN_STAGING }}
+        SENTRY_DSN_PRODUCTION: ${{ secrets.SENTRY_DSN_PRODUCTION }}
+        SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
+        STAGING_READ_API_KEY_10M: ${{ secrets.STAGING_READ_API_KEY_10M }}
+        STAGING_READ_API_KEY_1H: ${{ secrets.STAGING_READ_API_KEY_1H }}
+        STAGING_READ_API_KEY_1D: ${{ secrets.STAGING_READ_API_KEY_1D }}
+        STAGING_WRITE_API_KEY: ${{ secrets.STAGING_WRITE_API_KEY }}
+        PRODUCTION_READ_API_KEY_10M: ${{ secrets.PRODUCTION_READ_API_KEY_10M }}
+        PRODUCTION_READ_API_KEY_1H: ${{ secrets.PRODUCTION_READ_API_KEY_1H }}
+        PRODUCTION_READ_API_KEY_1D: ${{ secrets.PRODUCTION_READ_API_KEY_1D }}
+        PRODUCTION_WRITE_API_KEY: ${{ secrets.PRODUCTION_WRITE_API_KEY }}
+      run: |
+         # shellcheck disable=SC2086
+         nix-channel --add ${{ env.NIX_CHANNEL }} nixpkgs
+         nix-channel --update
+         nix-env -iA nixpkgs.amazon-ecs-cli nixpkgs.curl nixpkgs.age nixpkgs.killall
+         # shellcheck disable=SC2086
+         export ENV=${{ env.ENV }}
+         # shellcheck disable=SC2086
+         export FORCE_TIMEOUT=${{ env.FORCE_TIMEOUT }}
+         # shellcheck disable=SC2086
+         export TIMEOUT=${{ env.TIMEOUT }}
+
+         if [ "$ENV" == "production" ]; then
+           export SENTRY_DSN=$SENTRY_DSN_PRODUCTION
+           export READ_API_KEY_10M=$PRODUCTION_READ_API_KEY_10M
+           export READ_API_KEY_1H=$PRODUCTION_READ_API_KEY_1H
+           export READ_API_KEY_1D=$PRODUCTION_READ_API_KEY_1D
+           export WRITE_API_KEY=$PRODUCTION_WRITE_API_KEY
+         elif [ "$ENV" == "staging" ]; then
+           export SENTRY_DSN=$SENTRY_DSN_STAGING
+           export READ_API_KEY_10M=$STAGING_READ_API_KEY_10M
+           export READ_API_KEY_1H=$STAGING_READ_API_KEY_1H
+           export READ_API_KEY_1D=$STAGING_READ_API_KEY_1D
+           export WRITE_API_KEY=$STAGING_WRITE_API_KEY
+         elif [ "$ENV" == "dev" ]; then
+           echo "Dev not supported yet"
+         fi
+
+         DATA="$GITHUB_ACTOR triggered macaroon vault ${ENV} deploy of $GITHUB_SHA"
+         PAYLOAD="{\"text\":\"$DATA\"}"
+         curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_HOOK" || true
+
+         handler()
+         {
+           DATA="$GITHUB_ACTOR triggered macaroon vault ${ENV} deploy of $GITHUB_SHA ... FAILED"
+           PAYLOAD="{\"text\":\"$DATA\"}"
+           curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_HOOK" || true
+           exit 1
+         }
+
+         trap handler SIGINT
+         trap handler SIGTERM
+         trap handler ERR
+
+         ./deploy/deploy.sh
+
+         DATA="$GITHUB_ACTOR triggered macaroon vault ${ENV} deploy of $GITHUB_SHA ... finished"
+         PAYLOAD="{\"text\":\"$DATA\"}"
+         curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_HOOK" || true

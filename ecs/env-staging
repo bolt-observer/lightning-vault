@@ -1,0 +1,2 @@
+ENV=staging
+TIMEOUT=300

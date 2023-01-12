@@ -1,0 +1,6 @@
+release/*
+*.secret
+result
+.vscode
+crypt
+macaroon_vault
