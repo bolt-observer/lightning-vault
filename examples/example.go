@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/bolt-observer/macaroon_vault/utils"
+	"github.com/bolt-observer/lightning-vault/utils"
 )
 
 func main() {

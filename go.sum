@@ -89,6 +89,8 @@ github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kB
 github.com/bketelsen/crypt v0.0.3-0.20200106085610-5cbc8cc4026c/go.mod h1:MKsuJmJgSg28kpZDP6UIiPt0e0Oz0kqKNGyRaWEPv84=
 github.com/bolt-observer/agent v0.0.32 h1:HfSHXwH0ZzOju5rIgC5sI8eE0xk99LOLM9NPQHAsZ38=
 github.com/bolt-observer/agent v0.0.32/go.mod h1:UsduCJu53KSnv1VncytATlDXhBoVJ61Lp40ZQhM1QG0=
+github.com/bolt-observer/agent v0.0.41 h1:8ZtkYigdSnK2ba8Qv6hk3l+K7w8DyFrPTVyrWn+AEFc=
+github.com/bolt-observer/agent v0.0.41/go.mod h1:Rc/a89YR7fre4AGl9i1XBt/CRMaNfle5ucVyielFQbA=
 github.com/bolt-observer/go_common v0.0.9 h1:GBCQ82DtmxclIh5nxccosRoLqMNQp842e/xcE7YKaWo=
 github.com/bolt-observer/go_common v0.0.9/go.mod h1:/tOf/W6jiCUrJg35Dqu6Km3cnxdjTPwV331jyhKXRX8=
 github.com/btcsuite/btcd v0.0.0-20190824003749-130ea5bddde3/go.mod h1:3J08xEfcugPacsc34/LKRU2yO7YmuT8yt28J8k2+rrI=
@@ -564,6 +566,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
+github.com/powerman/rpc-codec v1.2.2 h1:BK0JScZivljhwW/vLLhZLtUgqSxc/CD3sHEs8LiwwKw=
+github.com/powerman/rpc-codec v1.2.2/go.mod h1:3Qr/y/+u3CwcSww9tfJMRn/95lB2qUdUeIQe7BYlLDo=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=

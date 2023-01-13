@@ -3,4 +3,4 @@ release/*
 result
 .vscode
 crypt
-macaroon_vault
+lightning-vault

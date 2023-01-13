@@ -1,4 +1,4 @@
-module github.com/bolt-observer/macaroon_vault
+module github.com/bolt-observer/lightning-vault
 
 go 1.18
 
@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.16.5
 	github.com/aws/aws-sdk-go-v2/config v1.15.10
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.15.10
-	github.com/bolt-observer/agent v0.0.32
+	github.com/bolt-observer/agent v0.0.41
 	github.com/bolt-observer/go_common v0.0.9
 	github.com/cabify/gotoprom v1.1.0
 	github.com/getsentry/sentry-go v0.13.0
@@ -111,6 +111,7 @@ require (
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/powerman/rpc-codec v1.2.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect

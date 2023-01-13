@@ -49,11 +49,8 @@ jobs:
 
     - name: Build and push container to ECR
       uses: docker/build-push-action@v3
-      env:
-        TOKEN: ${{ secrets.PAT }}
       with:
         build-args: |
-          TOKEN=${{ secrets.PAT }}
           DESCRIBE=${{ env.DESCRIBE }}
         push: true
         tags: ${{ steps.login-ecr.outputs.registry }}/macaroon_vault:${{ env.ENV }}
@@ -79,7 +76,6 @@ jobs:
 
     - name: Deploy
       env:
-        TOKEN: ${{ secrets.PAT }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
@@ -122,13 +118,13 @@ jobs:
            echo "Dev not supported yet"
          fi
 
-         DATA="$GITHUB_ACTOR triggered macaroon vault ${ENV} deploy of $GITHUB_SHA"
+         DATA="$GITHUB_ACTOR triggered lightning vault ${ENV} deploy of $GITHUB_SHA"
          PAYLOAD="{\"text\":\"$DATA\"}"
          curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_HOOK" || true
 
          handler()
          {
-           DATA="$GITHUB_ACTOR triggered macaroon vault ${ENV} deploy of $GITHUB_SHA ... FAILED"
+           DATA="$GITHUB_ACTOR triggered lightning vault ${ENV} deploy of $GITHUB_SHA ... FAILED"
            PAYLOAD="{\"text\":\"$DATA\"}"
            curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_HOOK" || true
            exit 1
@@ -140,6 +136,6 @@ jobs:
 
          ./deploy/deploy.sh
 
-         DATA="$GITHUB_ACTOR triggered macaroon vault ${ENV} deploy of $GITHUB_SHA ... finished"
+         DATA="$GITHUB_ACTOR triggered lightning vault ${ENV} deploy of $GITHUB_SHA ... finished"
          PAYLOAD="{\"text\":\"$DATA\"}"
          curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_HOOK" || true
