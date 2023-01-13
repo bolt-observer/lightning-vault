@@ -4,7 +4,7 @@ task_definition:
   ecs_network_mode: awsvpc
 
   services:
-    lightning-vault:
+    macaroon_vault:
       mem_limit: 512m
       mem_reservation: 512m
       essential: true

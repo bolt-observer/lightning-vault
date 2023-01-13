@@ -47,11 +47,43 @@ account id (`123456789012`) which you need to customize for your needs. The part
 all secrets with names starting with `stagingmacaroon_`.
 
 Vault will know the current environment through `ENV` environment variable. It can be any alphanumeric string. There is just one special value `local`. On local environment
-vault will store secrets only in memory and not persist them to SecretsManager.
+Vault will store secrets only in memory and not persist them to SecretsManager.
+
+The most convenient option is to use [IAM Instance Profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html) but you could also create
+an IAM user and then add access keys (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables).
 
 ## Authentication
 
-There are 4 different permission levels ("roles") also configured through enviroment variables:
+Previous paragraph described what kind of permissions the service needs so it can access AWS SecretsManager.
+Here we mean authentication of the Vault "users" (services or users that use API access to put or get secrets from Vault).
+
+They authenticate through HTTP Basic authentication with a username and password. Since credentials are transmitted in clear-text, you
+need a secure transport channel! Vault itself does not terminate TLS connections currently, but is meant to be behind a dedicated load-balancer that can do it (AWS ELB).
+
+Another option for authentication is through `X-Amazon-Presigned-Getcalleridentity` HTTP header. This way callers locally sign a request for
+Amazon STS service. Vault then takes this serialized request and executes it on behalf of the requestor. If it succeeds that proves their identity.
+Read more about AWS Signed Requests authentication method [here](https://ahermosilla.com/cloud/2020/11/17/leveraging-aws-signed-requests.html).
+
+The "username" Vault infers via this method is complete ARN. For example:
+`arn:aws:sts::123456789012:assumed-role/some-machine-role/i-xxxxxxxxxxxxxxxxx`
+if you used IAM instance profile
+
+or:
+
+`arn:aws:sts::123456789012:assumed-role/role/user`
+if you were using AWS SSO.
+
+With this authentication option a wildcard match against username is performed.
+Setting username to `arn:aws:sts::123456789012:assumed-role/some-machine-role/*` will grant permissions
+to any instance using `some-machine-role`.
+
+Caller just provides `X-Amazon-Presigned-Getcalleridentity` value and no username or password (request should not even include HTTP Authorization header).
+
+In the configuration instead of a password you use a special placeholder value `$iam`. It is chosen in such a way that it is is invalid as a password for any other method.
+This prevents somebody authenticating via HTTP Basic authentication with literal username `arn:aws:sts::123456789012:assumed-role/some-machine-role/*` if at some time this entry
+got interpreted as a username and password.
+
+There are 4 different permission levels ("roles") which are also configured through enviroment variables:
 * READ_API_KEY_10M can obtain secrets valid for 10 minutes
 * READ_API_KEY_1H can obtain secrets valid for 1 hour
 * READ_API_KEY_1D can obtain secrets valid for 1 day
@@ -62,15 +94,13 @@ Roles `READ_API_KEY_10M`, `READ_API_KEY_1H` and `READ_API_KEY_1D` are mutually e
 `READ_API_KEY_1D` too for instance.
 
 An entry has 3 possible authentication ways:
-* `user|pass` - you can authenticate via basic auth with username `user` and password `pass`
+* `user|pass` - you can authenticate via HTTP Basic authentication with username `user` and password `pass`
 
-* `user|$2a$...` - you can authenticate va basic auth with username `user` and the password that has one-way hash `$2a$...` (bcrypt)
+* `user|$2a$...` - you can authenticate via HTTP Basic authentication  with username `user` and the password that has one-way hash `$2a$...` (bcrypt)
 This methods allows you to leave configuration in plain-text and not leak credentials.
 
 * `glob|$iam` - you can authenticate via IAM authentication, you need to set `X-Amazon-Presigned-Getcalleridentity` HTTP header to the presigned query string for STS/GetCallerIdentity call.
 Glob can contain wildcards `?` (meaning any one character) and `*` (meaning zero or more characters) and is matched against complete ARN of the identity from GetCallerIdentity.
-
-Read more about AWS Signed Requests authentication method [here.](https://ahermosilla.com/cloud/2020/11/17/leveraging-aws-signed-requests.html)
 
 ## Examples
 Python example utilizing boto3 library can be found here [example_auth.py](./example_auth.py).
