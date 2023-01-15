@@ -60,6 +60,8 @@ Vault is configured through environment variables.
 | READ_API_KEY_10M | list of users that can request credentials valid for 1h        |     
 | WRITE_API_KEY    | list of users that can input new credentials            |     
 
+ For examples check [Usage](https://github.com/bolt-observer/lightning-vault/blob/main/README.md#usage)
+ 
 ## Authentication to Vault
 
 There are multiple authentecation options your applications and services can use to access Lightning Vault.
@@ -113,10 +115,6 @@ This methods allows you to leave configuration in plain-text and not leak creden
 * `glob|$iam` - you can authenticate via IAM authentication, you need to set `X-Amazon-Presigned-Getcalleridentity` HTTP header to the presigned query string for STS/GetCallerIdentity call.
 Glob can contain wildcards `?` (meaning any one character) and `*` (meaning zero or more characters) and is matched against complete ARN of the identity from GetCallerIdentity.
 
-## Examples
-Python example utilizing boto3 library can be found here [example_auth.py](./examples/example_auth.py).
-Go example can be found in [main.go](./examples/example.go).
-
 ## Deployment
 Vault is meant to be deployed as a standalne service with priviledged access to SecretManager. Your applications should have limited API access to Vault through API.
 
@@ -166,6 +164,12 @@ Vault supports following operations:
 
   (In the HTTP URLs `:pubkey` means the actual public key like `0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7`)
 
+## Examples
+  
+Python example utilizing boto3 library can be found here [example_auth.py](./examples/example_auth.py).
+Go example can be found in [main.go](./examples/example.go).
+
+  
 ## Usage
 
 ```
