@@ -52,16 +52,18 @@ Vault will store secrets only in memory and not persist them to SecretsManager.
 The most convenient option is to use [IAM Instance Profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html) but you could also create
 an IAM user and then add access keys (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables).
 
-## Authentication
+## Authentication to Vault
 
-Previous paragraph described what kind of permissions the service needs so it can access AWS SecretsManager.
-Here we mean authentication of the Vault "users" (services or users that use API access to put or get secrets from Vault).
+There are multiple authentecation options your applications and services can use to access Lightning Vault. 
+
+### HTTP Basic Auth
 
 They authenticate through HTTP Basic authentication with a username and password. Since credentials are transmitted in clear-text, you
-need a secure transport channel! Vault itself does not terminate TLS connections currently, but is meant to be behind a dedicated load-balancer that can do it (AWS ELB).
+need a secure transport channel. Lightning Vault itself does not terminate TLS connections, it is meant to be behind a load-balancer or reverse proxy that handles that.
 
-Another option for authentication is through `X-Amazon-Presigned-Getcalleridentity` HTTP header. This way callers locally sign a request for
-Amazon STS service. Vault then takes this serialized request and executes it on behalf of the requestor. If it succeeds that proves their identity.
+### AWS Presigned Requests
+Another authentication is `X-Amazon-Presigned-GetCalleridentity` HTTP header. This way callers locally sign a request for
+Amazon STS service and Lightning Vault then takes this serialized request and executes it on behalf of the requestor. If it succeeds that proves their identity.
 Read more about AWS Signed Requests authentication method [here](https://ahermosilla.com/cloud/2020/11/17/leveraging-aws-signed-requests.html).
 
 The "username" Vault infers via this method is complete ARN. For example:
@@ -80,8 +82,9 @@ to any instance using `some-machine-role`.
 Caller just provides `X-Amazon-Presigned-Getcalleridentity` value and no username or password (request should not even include HTTP Authorization header).
 
 In the configuration instead of a password you use a special placeholder value `$iam`. It is chosen in such a way that it is is invalid as a password for any other method.
-This prevents somebody authenticating via HTTP Basic authentication with literal username `arn:aws:sts::123456789012:assumed-role/some-machine-role/*` if at some time this entry
-got interpreted as a username and password.
+This prevents somebody authenticating via HTTP Basic authentication with literal username `arn:aws:sts::123456789012:assumed-role/some-machine-role/*` if at some time this entry got interpreted as a username and password.
+
+### Access Roles
 
 There are 4 different permission levels ("roles") which are also configured through enviroment variables:
 * READ_API_KEY_10M can obtain secrets valid for 10 minutes
