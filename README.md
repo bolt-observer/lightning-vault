@@ -54,7 +54,7 @@ an IAM user and then add access keys (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS
 
 ## Authentication to Vault
 
-There are multiple authentecation options your applications and services can use to access Lightning Vault. 
+There are multiple authentecation options your applications and services can use to access Lightning Vault.
 
 ### HTTP Basic Auth
 
@@ -148,13 +148,15 @@ Vault supports following operations:
 * Verifying whether a macaroon works
 
   Is done automatically while adding a macaroon but you can invoke that step independently too using `/verify/:pubkey/` HTTP GET method. Similar to adding a macaroon this requires `write` permissions.
-  Note that this can be quite slow as Vault will actually try to connect to your lightning nod.
+  Note that this can be quite slow as Vault will actually try to connect to your lightning node.
 
 * Querying whether a macaroon exists
 
-  This can be invoked by any authorized user using `/query/:pubkey` HTTP GET request. The difference between getting a (restricted) macaroon and this method is that no data about the macaroon
-  itself will be returned, just the fact whether a macaroon for that public key is stored in Vault or not. Using this method a user who has `write` but no `read` permissions can check whether data for a specific pubkey
+  This can be invoked by any authorized user using `/query/:pubkey/` HTTP GET request. The difference between getting a (restricted) macaroon and this method is that no data about the macaroon
+  itself will be returned, just the fact whether a macaroon for that public key is stored in Vault or not. Using this method a user who has `write` but no `read` permissions can check whether data for a specific node
   already exists (and for instance decide to not overwrite it).
+
+  (In the HTTP URLs `:pubkey` means the actual public key like `0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7`)
 
 ## Usage
 
