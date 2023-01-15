@@ -6,10 +6,6 @@ By design original secret can never be retrieved, you can only request a time-re
 
 Currently only supports LND (macaroons).
 
-## Configuration
-
-Vault is configured through environment variables.
-
 ## Requirements
 
 IAM permissions:
@@ -51,6 +47,18 @@ Vault will store secrets only in memory and not persist them to SecretsManager.
 
 The most convenient option is to use [IAM Instance Profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html) but you could also create
 an IAM user and then add access keys (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables).
+
+## Configuration
+
+Vault is configured through environment variables.
+
+| Variable         | Description |
+| ---------------- | ----------- | 
+| ENV              | env name with which all stored credentials are starting       |     
+| READ_API_KEY_1D  | list of users that can request credentials valid for 24h        |     
+| READ_API_KEY_1H  | list of users that can request credentials valid for 1h      |     
+| READ_API_KEY_10M | list of users that can request credentials valid for 1h        |     
+| WRITE_API_KEY    | list of users that can input new credentials            |     
 
 ## Authentication to Vault
 
