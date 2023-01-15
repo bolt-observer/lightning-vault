@@ -103,8 +103,8 @@ This methods allows you to leave configuration in plain-text and not leak creden
 Glob can contain wildcards `?` (meaning any one character) and `*` (meaning zero or more characters) and is matched against complete ARN of the identity from GetCallerIdentity.
 
 ## Examples
-Python example utilizing boto3 library can be found here [example_auth.py](./example_auth.py).
-Go example can be found in [main.go](./cmd/crypt/main.go#L12).
+Python example utilizing boto3 library can be found here [example_auth.py](./examples/example_auth.py).
+Go example can be found in [main.go](./examples/example.go).
 
 ## Deployment
 Vault is meant to be deployed as a standalne service with priviledged access to SecretManager. Your applications should have limited API access to Vault through API.
