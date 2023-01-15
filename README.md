@@ -1,6 +1,6 @@
 # Lightning Vault
 
-Lightning Vault is a secure secrets solution  for storing lightning node authentication tokens in AWS environment. Purpose of this is to limit the fallout of potential credential leak or security incident and apply rolling credential principles to lightning network infrastructure.
+Lightning Vault is a secure secrets solutionfor storing lightning node authentication tokens in AWS environment. Purpose of this is to limit the fallout of potential credential leak or security incident and apply rolling credential principles to lightning network infrastructure.
 
 By design original secret can never be retrieved, you can only request a time-restricted version of it from the service. This way your applications can interact with your nodes but always use expiring credentials.
 
@@ -113,6 +113,48 @@ Go example can be found in [main.go](./examples/example.go).
 Vault is meant to be deployed as a standalne service with priviledged access to SecretManager. Your applications should have limited API access to Vault through API.
 
 ![Arch](./macaroon.drawio.png "arch")
+
+## API
+
+Vault supports following operations:
+
+* Adding a macaroon
+
+  This is done with HTTP POST request to `/put/` endpoint. Another request to same endpoint will overwrite previously stored data. Initial creation of a macaroon returns HTTP 201 (Created) response
+  while subsequent (over)writes will return HTTP 200. For this operation `write` permissions are required. As described later this includes the verification part which will actually try to connect to
+  the lightning node (so `endpoint` needs to be reachable from Vault).
+
+  JSON payload looks like this:
+
+  ```
+  {
+    "pubkey": "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7",
+    "macaroon_hex": "...",
+    "certificate_base64": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNKakNDQWN5Z0F3SUJBZ0lRUmU4QzhCcURubEF3b0VxRjdMRTVGREFLQmdncWhrak9QUVFEQWpBeE1SOHcKSFFZRFZRUUtFeFpzYm1RZ1lYVjBiMmRsYm1WeVlYUmxaQ0JqWlhKME1RNHdEQVlEVlFRREV3VmhiR2xqWlRBZQpGdzB5TXpBeE1ESXhOVE0xTXpsYUZ3MHlOREF5TWpjeE5UTTFNemxhTURFeEh6QWRCZ05WQkFvVEZteHVaQ0JoCmRYUnZaMlZ1WlhKaGRHVmtJR05sY25ReERqQU1CZ05WQkFNVEJXRnNhV05sTUZrd0V3WUhLb1pJemowQ0FRWUkKS29aSXpqMERBUWNEUWdBRXlKaHRYWk1NT0NQYzYxWmlISmVyKzdHUm9HalFzcWtNcjdvQVVjNnZsZC9JNDl2SwpHR01mRjhMcDhTSm1jNlJVOHQxN3FEZFhyUmZMbTdLSjB0eDBkcU9CeFRDQndqQU9CZ05WSFE4QkFmOEVCQU1DCkFxUXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEUKRmdRVU5BUW5BYVBNOStrZEpxMXdud2FtbldpY1d1SXdhd1lEVlIwUkJHUXdZb0lGWVd4cFkyV0NDV3h2WTJGcwphRzl6ZElJRllXeHBZMldDRG5CdmJHRnlMVzQyTFdGc2FXTmxnZ1IxYm1sNGdncDFibWw0Y0dGamEyVjBnZ2RpCmRXWmpiMjV1aHdSL0FBQUJoeEFBQUFBQUFBQUFBQUFBQUFBQUFBQUJod1NzR0FBQ01Bb0dDQ3FHU000OUJBTUMKQTBnQU1FVUNJUUQ2dElDMVdTWFRWNkpuSzVlN3FkdDRBVHp2Q0ZHUldPTmp2T29tUUdScXB3SWdiR1ZJWFVPbgpHamlUdTZ5MXVMT1pRS0VPTnB1MXZkYUNKejVpanNRdlVndz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+    "endpoint": "127.0.0.1:10009",
+  }
+  ```
+
+  `pubkey` is the public key of the node, `macaroon_hex` is the serialized version of the macaroon as a hex string (you can obtain it using ```xxd -p -c 10000 file.macaroon```), `certificate_base64` is the X.509 certificate as a base64 string (obtained using ```base64 tls.cert | tr -d "\n"```and `endpoint` is the endpoint of the lightning node.
+
+* Removing a macaroon
+
+  Is done using HTTP DELETE request to `/put/:pubkey/` endpoint. This operation also requires `write` permissions.
+
+* Getting a restricted macaroon (this is the typical mode of operation)
+
+  Is obtained through `/get/:pubkey/` HTTP GET request. The restriction of the macaroon depends on your role/permissions and can be either 10 minutes, 1 hour or 1 day (which means you need `read` permissions).
+
+* Verifying whether a macaroon works
+
+  Is done automatically while adding a macaroon but you can invoke that step independently too using `/verify/:pubkey/` HTTP GET method. Similar to adding a macaroon this requires `write` permissions.
+  Note that this can be quite slow as Vault will actually try to connect to your lightning nod.
+
+* Querying whether a macaroon exists
+
+  This can be invoked by any authorized user using `/query/:pubkey` HTTP GET request. The difference between getting a (restricted) macaroon and this method is that no data about the macaroon
+  itself will be returned, just the fact whether a macaroon for that public key is stored in Vault or not. Using this method a user who has `write` but no `read` permissions can check whether data for a specific pubkey
+  already exists (and for instance decide to not overwrite it).
 
 ## Usage
 
