@@ -27,7 +27,7 @@ jobs:
 
     - uses: actions/setup-go@v3
       with:
-        go-version: '^1.18.0'
+        go-version: '^1.19.0'
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1.7.0
@@ -114,8 +114,8 @@ jobs:
            export READ_API_KEY_1H=$STAGING_READ_API_KEY_1H
            export READ_API_KEY_1D=$STAGING_READ_API_KEY_1D
            export WRITE_API_KEY=$STAGING_WRITE_API_KEY
-         elif [ "$ENV" == "dev" ]; then
-           echo "Dev not supported yet"
+         else
+           echo "Enviroment ${ENV} not supported yet"
          fi
 
          DATA="$GITHUB_ACTOR triggered lightning vault ${ENV} deploy of $GITHUB_SHA"

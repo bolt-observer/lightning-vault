@@ -59,13 +59,13 @@ for i in $(echo $SCRIPTPATH/../ecs/compose*.y*ml | sed -r 's/[^ ]+compose-//g' |
     (timeout ${FORCE_TIMEOUT} ecs-cli compose --project-name ${i} -f $SCRIPTPATH/../ecs/compose-${i}.yml -ecs-params $SCRIPTPATH/../ecs/ecs-params-${i}.yml service up \
      --private-dns-namespace ${PRIVATE_DNS} --vpc ${VPC} --enable-service-discovery --dns-type A \
      --target-groups "targetGroupArn=${TG_INTERNAL},containerPort=1339,containerName=macaroon_vault" \
-     --timeout ${TIMEOUT} || { echo "ecs-cli timed-out"; exit 1; })&
+     --timeout ${TIMEOUT} > /dev/null 2>/dev/null || { echo "ecs-cli timed-out"; exit 1; })&
   else
     # shellcheck disable=SC2086
     (timeout ${FORCE_TIMEOUT} ecs-cli compose --project-name ${i} -f $SCRIPTPATH/../ecs/compose-${i}.yml -ecs-params $SCRIPTPATH/../ecs/ecs-params-${i}.yml service up \
      --private-dns-namespace ${PRIVATE_DNS} --vpc ${VPC} --enable-service-discovery --dns-type A \
      --target-groups "targetGroupArn=${TG_INTERNAL},containerPort=1339,containerName=lightning-vault" --target-groups "targetGroupArn=${TG_EXTERNAL},containerPort=1339,containerName=macaroon_vault" \
-     --timeout ${TIMEOUT} || { echo "ecs-cli timed-out"; exit 1; })&
+     --timeout ${TIMEOUT} > /dev/null 2>/dev/null || { echo "ecs-cli timed-out"; exit 1; })&
   fi
 done
 
