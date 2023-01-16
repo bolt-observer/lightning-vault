@@ -53,15 +53,15 @@ an IAM user and then add access keys (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS
 Vault is configured through environment variables.
 
 | Variable         | Description |
-| ---------------- | ----------- | 
-| ENV              | env name with which all stored credentials are starting       |     
-| READ_API_KEY_1D  | list of users that can request credentials valid for 24h        |     
-| READ_API_KEY_1H  | list of users that can request credentials valid for 1h      |     
-| READ_API_KEY_10M | list of users that can request credentials valid for 1h        |     
-| WRITE_API_KEY    | list of users that can input new credentials            |     
+| ---------------- | ----------- |
+| ENV              | env name with which all stored credentials are starting       |
+| READ_API_KEY_1D  | list of users that can request credentials valid for 24h        |
+| READ_API_KEY_1H  | list of users that can request credentials valid for 1h      |
+| READ_API_KEY_10M | list of users that can request credentials valid for 1h        |
+| WRITE_API_KEY    | list of users that can input new credentials            |
 
  For examples check [Usage](https://github.com/bolt-observer/lightning-vault/blob/main/README.md#usage)
- 
+
 ## Authentication to Vault
 
 There are multiple authentecation options your applications and services can use to access Lightning Vault.
@@ -145,7 +145,7 @@ Vault supports following operations:
 
 * Removing a macaroon
 
-  Is done using HTTP GET request to `/delete/:pubkey/` endpoint. This operation also requires `write` permissions.
+  Is done using HTTP POST request to `/delete/:pubkey/` endpoint. This operation also requires `write` permissions.
 
 * Getting a restricted macaroon (this is the typical mode of operation)
 
@@ -165,11 +165,11 @@ Vault supports following operations:
   (In the HTTP URLs `:pubkey` means the actual public key like `0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7`)
 
 ## Examples
-  
+
 Python example utilizing boto3 library can be found here [example_auth.py](./examples/example_auth.py).
 Go example can be found in [main.go](./examples/example.go).
 
-  
+
 ## Usage
 
 ```

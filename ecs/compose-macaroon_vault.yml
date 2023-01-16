@@ -10,5 +10,9 @@ services:
       - ./env-${ENV}
     environment:
       SENTRY_DSN: ${SENTRY_DSN}
+      READ_API_KEY_10M: ${READ_API_KEY_10M}
+      READ_API_KEY_1H: ${READ_API_KEY_1H}
+      READ_API_KEY_1D: ${READ_API_KEY_1D}
+      WRITE_API_KEY: ${WRITE_API_KEY}
     logging:
       driver: fluentd

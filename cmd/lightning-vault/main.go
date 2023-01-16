@@ -231,8 +231,8 @@ func (h *Handlers) httpListen(load bool) {
 	writeRoutes.Path("/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodDelete)
 	writeRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodDelete)
 
-	deleteRoutes.Path("/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodPost, http.MethodGet)
-	deleteRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodPost, http.MethodGet)
+	deleteRoutes.Path("/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodPost, http.MethodDelete)
+	deleteRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodPost, http.MethodDelete)
 
 	readRoutes.Path("/{pubkey}").HandlerFunc(h.GetHandler).Methods(http.MethodPost, http.MethodGet)
 	readRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.GetHandler).Methods(http.MethodPost, http.MethodGet)

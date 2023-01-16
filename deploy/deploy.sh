@@ -40,8 +40,6 @@ export PRIVATE_DNS=${PRIVATE_DNS:-"${ENV}.boltobserver.local"}
 
 # shellcheck disable=SC2086
 ecs-cli configure -c ${ENV}-privileged -r ${AWS_DEFAULT_REGION} --default-launch-type EC2
-aws ecs list-services --cluster ${ENV}-privileged || true
-aws ecs list-tasks --cluster ${ENV}-privileged || true
 
 # TAG is currently production or staging (but eventually this will be replaced unlike ENV)
 export ENV
