@@ -145,7 +145,7 @@ Vault supports following operations:
 
 * Removing a macaroon
 
-  Is done using HTTP DELETE request to `/put/:pubkey/` endpoint. This operation also requires `write` permissions.
+  Is done using HTTP GET request to `/delete/:pubkey/` endpoint. This operation also requires `write` permissions.
 
 * Getting a restricted macaroon (this is the typical mode of operation)
 

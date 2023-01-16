@@ -54,7 +54,7 @@ func MakeNewDummyHandlers() *Handlers {
 
 // MainHandler - / route response
 func (h *Handlers) MainHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to Macaroon Vault!\n")
+	fmt.Fprintf(w, "Welcome to Lightning Vault!\n")
 }
 
 func (h *Handlers) obtainUniqueID(w http.ResponseWriter, r *http.Request) (string, error) {

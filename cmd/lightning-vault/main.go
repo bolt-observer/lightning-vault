@@ -214,6 +214,8 @@ func (h *Handlers) httpListen(load bool) {
 	readRoutes.Use(authMiddleware(toDict(utils.GetKeys(readDurations))))
 	writeRoutes := router.PathPrefix("/put/").Subrouter()
 	writeRoutes.Use(authMiddleware(toDict(writeAPIKeys)))
+	deleteRoutes := router.PathPrefix("/delete/").Subrouter()
+	deleteRoutes.Use(authMiddleware(toDict(writeAPIKeys)))
 	verifyRoutes := router.PathPrefix("/verify/").Subrouter()
 	verifyRoutes.Use(authMiddleware(toDict(writeAPIKeys)))
 
@@ -228,6 +230,9 @@ func (h *Handlers) httpListen(load bool) {
 
 	writeRoutes.Path("/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodDelete)
 	writeRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodDelete)
+
+	deleteRoutes.Path("/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodPost, http.MethodGet)
+	deleteRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.DeleteHandler).Methods(http.MethodPost, http.MethodGet)
 
 	readRoutes.Path("/{pubkey}").HandlerFunc(h.GetHandler).Methods(http.MethodPost, http.MethodGet)
 	readRoutes.Path("/{uniqueId}/{pubkey}").HandlerFunc(h.GetHandler).Methods(http.MethodPost, http.MethodGet)

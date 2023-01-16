@@ -32,7 +32,7 @@ func TestMainHandler(t *testing.T) {
 		t.Fatalf("got error %v", err)
 	}
 
-	if string(data) != "Welcome to Macaroon Vault!\n" {
+	if string(data) != "Welcome to Lightning Vault!\n" {
 		t.Fatalf("invalid response")
 	}
 }
