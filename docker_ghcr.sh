@@ -7,6 +7,9 @@ failure() {
 }
 trap failure ERR
 
+export ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+echo "Account: ${ACCOUNT}
+
 TAG=${TAG:-staging}
 echo "Using tag $TAG"
 
@@ -19,5 +22,5 @@ aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --usern
 IMAGE=${IMAGE:-${ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com/macaroon_vault}
 
 docker pull $IMAGE:$TAG
-docker tag $IMAGE:$TAG ghcr.io/bolt-observer/macaroon_vault:latest
-docker push ghcr.io/bolt-observer/macaroon_vault:latest
+docker tag $IMAGE:$TAG ghcr.io/bolt-observer/lightning-vault:latest
+docker push ghcr.io/bolt-observer/lightning-vault:latest

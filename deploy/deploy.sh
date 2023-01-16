@@ -9,6 +9,8 @@ handler()
 
 trap handler SIGINT
 
+export ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+
 export ENV=${ENV:-"staging"}
 
 TIMEOUT=${TIMEOUT:-30}
