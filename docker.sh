@@ -7,6 +7,9 @@ failure() {
 }
 trap failure ERR
 
+export ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+echo "Account: ${ACCOUNT}"
+
 TAG=${TAG:-staging}
 echo "Using tag $TAG"
 
