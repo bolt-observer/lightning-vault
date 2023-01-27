@@ -212,7 +212,52 @@ func extractHostnameAndPort(endpoint string) (string, int) {
 	return u.Hostname(), port
 }
 
-// PutHandler - put a macaroo
+func autoDetectAPIType(data *entities.Data) {
+	if strings.HasPrefix(data.Endpoint, "http") {
+		r := int(api.LndRest)
+		data.ApiType = &r
+
+		u, err := url.Parse(data.Endpoint)
+		if err != nil {
+			r := int(api.LndGrpc)
+			data.ApiType = &r
+		} else if u.Port() == "10009" {
+			r := int(api.LndGrpc)
+			data.ApiType = &r
+			data.Endpoint = u.Host
+		}
+	} else {
+		r := int(api.LndGrpc)
+		data.ApiType = &r
+	}
+
+	if local_utils.DetectAuthenticatorType(data.MacaroonHex) == local_utils.Rune {
+		r := int(api.ClnSocket) // Replace with ClnCommando
+		data.ApiType = &r
+	}
+}
+
+func complainAboutInvalidAuthenticator(data entities.Data) bool {
+	if data.ApiType == nil {
+		return false
+	}
+
+	apiType, err := api.GetAPIType(data.ApiType)
+	if err != nil || apiType == nil {
+		return false
+	}
+
+	a := local_utils.APITypeToAuthenticatorType(apiType)
+	b := local_utils.DetectAuthenticatorType(data.MacaroonHex)
+
+	if a == local_utils.Unknown || b == local_utils.Unknown {
+		return false
+	}
+
+	return a != b
+}
+
+// PutHandler - put a macaroon
 func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 	var data entities.Data
 
@@ -250,7 +295,6 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 
 	if data.ApiType != nil {
 		_, err = api.GetAPIType(data.ApiType)
-
 		if err != nil {
 			h.badRequest(w, r, "invalid api type", fmt.Sprintf("[Put] invalid api type - %v", data.ApiType))
 		}
@@ -260,25 +304,7 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 				data.ApiType = orig.ApiType
 			}
 		} else {
-			// TODO: deprecate this
-			if strings.HasPrefix(data.Endpoint, "http") {
-				r := int(api.LndRest)
-				data.ApiType = &r
-
-				u, err := url.Parse(data.Endpoint)
-				if err != nil {
-					r := int(api.LndGrpc)
-					data.ApiType = &r
-				} else if u.Port() == "10009" {
-					r := int(api.LndGrpc)
-					data.ApiType = &r
-					data.Endpoint = u.Host
-				}
-			} else {
-				r := int(api.LndGrpc)
-				data.ApiType = &r
-			}
-
+			autoDetectAPIType(&data)
 		}
 	}
 
@@ -292,7 +318,7 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 				h.badRequest(w, r, "invalid endpoint", fmt.Sprintf("[Put] invalid endpoint - %s", data.Endpoint))
 				return
 			}
-		} else if *data.ApiType == int(api.LndRest) {
+		} else if *data.ApiType == int(api.LndRest) || *data.ApiType == int(api.ClnSocket) { // TODO: change to ClnCommando
 			hostname, port = extractHostnameAndPort(data.Endpoint)
 		} else {
 			h.badRequest(w, r, "unsupported api type", fmt.Sprintf("[Put] unsupported api type - %v", *data.ApiType))
@@ -341,9 +367,14 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = local_utils.ConstraintMacaroon(data.MacaroonHex, 1*time.Minute)
+	if complainAboutInvalidAuthenticator(data) {
+		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - not compatible with API type")
+		return
+	}
+
+	_, err = local_utils.Constrain(data.MacaroonHex, 1*time.Minute)
 	if err != nil {
-		h.badRequest(w, r, "invalid macaroon", "[Put] invalid macaroon")
+		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - could not constrain")
 		return
 	}
 

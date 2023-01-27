@@ -25,7 +25,7 @@ func GetConstrained(d *entities.Data, duration time.Duration) entities.Data {
 	data.ApiType = d.ApiType
 	data.CertVerificationType = d.CertVerificationType
 
-	mac, err := ConstraintMacaroon(d.MacaroonHex, duration)
+	mac, err := Constrain(d.MacaroonHex, duration)
 	if err != nil {
 		data.MacaroonHex = ""
 	} else {
