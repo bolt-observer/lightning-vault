@@ -23,7 +23,7 @@ var (
 )
 
 // Constrain constrains a given authenticator
-func Constrain(original string, duration time.Duration, defaultAPIType api.APIType) (string, error) {
+func Constrain(original string, duration time.Duration, defaultAPIType *api.APIType) (string, error) {
 	if duration > time.Hour*24 {
 		return "", fmt.Errorf("duration too long")
 	}

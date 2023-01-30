@@ -28,11 +28,10 @@ func GetConstrained(d *entities.Data, duration time.Duration) entities.Data {
 
 	typ, err := api.GetAPIType(d.ApiType)
 	if err != nil {
-		data.MacaroonHex = ""
-		return *data
+		typ = nil
 	}
 
-	mac, err := Constrain(d.MacaroonHex, duration, *typ)
+	mac, err := Constrain(d.MacaroonHex, duration, typ)
 	if err != nil {
 		data.MacaroonHex = ""
 	} else {

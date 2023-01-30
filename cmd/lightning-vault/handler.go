@@ -232,7 +232,8 @@ func autoDetectAPIType(data *entities.Data) {
 	}
 
 	// TODO: change me
-	if local_utils.DetectAuthenticatorType(data.MacaroonHex, api.ClnSocket) == local_utils.Rune {
+	t := api.ClnSocket
+	if local_utils.DetectAuthenticatorType(data.MacaroonHex, &t) == local_utils.Rune {
 		r := int(api.ClnSocket) // Replace with ClnCommando
 		data.ApiType = &r
 	}
@@ -249,7 +250,7 @@ func complainAboutInvalidAuthenticator(data entities.Data) bool {
 	}
 
 	a := local_utils.ToAuthenticatorType(*apiType)
-	b := local_utils.DetectAuthenticatorType(data.MacaroonHex, *apiType)
+	b := local_utils.DetectAuthenticatorType(data.MacaroonHex, apiType)
 
 	if a == local_utils.Unknown {
 		return false
@@ -371,16 +372,17 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if complainAboutInvalidAuthenticator(data) {
+		fmt.Printf("COMPLAIN %+v\n", data)
 		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - not compatible with API type")
 		return
 	}
 
 	apiType, err := api.GetAPIType(data.ApiType)
-	if err != nil || apiType == nil {
-		h.badRequest(w, r, "invalid api type", fmt.Sprintf("[Put] invalid api type - %v", data.ApiType))
+	if err != nil {
+		apiType = nil
 	}
 
-	_, err = local_utils.Constrain(data.MacaroonHex, 1*time.Minute, *apiType)
+	_, err = local_utils.Constrain(data.MacaroonHex, 1*time.Minute, apiType)
 	if err != nil {
 		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - could not constrain")
 		return

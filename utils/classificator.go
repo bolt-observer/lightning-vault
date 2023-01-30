@@ -2,6 +2,9 @@ package utils
 
 import (
 	"encoding/hex"
+	"fmt"
+	"regexp"
+	"unicode"
 
 	api "github.com/bolt-observer/agent/lightning"
 	runes "github.com/bolt-observer/go-runes/runes"
@@ -19,20 +22,22 @@ const (
 )
 
 // DetectAuthenticatorType detects what kind of authenticator is used
-func DetectAuthenticatorType(str string, whenMultipleMatch api.APIType) AuthenticatorType {
+func DetectAuthenticatorType(str string, whenMultipleMatch *api.APIType) AuthenticatorType {
 	matches := 0
 	result := Unknown
-	if isMacaroon(str) {
-		result = Macaroon
-		matches++
-	}
+
 	if isRune(str) {
 		result = Rune
 		matches++
 	}
 
-	if matches > 1 {
-		defaultType := ToAuthenticatorType(whenMultipleMatch)
+	if isMacaroon(str) {
+		result = Macaroon
+		matches++
+	}
+
+	if matches > 1 && whenMultipleMatch != nil {
+		defaultType := ToAuthenticatorType(*whenMultipleMatch)
 		if defaultType != Unknown {
 			result = defaultType
 		}
@@ -55,6 +60,13 @@ func ToAuthenticatorType(t api.APIType) AuthenticatorType {
 }
 
 func isMacaroon(str string) bool {
+	// hex.DecodeString could just parse part of it
+	re := regexp.MustCompile(`[A-Fa-f0-9]+`)
+	dummy := re.ReplaceAllString(str, "")
+	if len(dummy) > 0 {
+		return false
+	}
+
 	macBytes, err := hex.DecodeString(str)
 	if err != nil {
 		return false
@@ -76,6 +88,18 @@ func isRune(str string) bool {
 
 	if r.GetVersion() != 0 {
 		return false
+	}
+
+	// Lib is quite forgiving but we are more strict, if value is not printable it's not a rune
+	for _, rest := range r.Restrictions {
+		for _, alt := range rest.Alternatives {
+			s := fmt.Sprintf("%v", alt.Value)
+			for _, rune := range s {
+				if !unicode.IsPrint(rune) {
+					return false
+				}
+			}
+		}
 	}
 
 	return true
