@@ -19,28 +19,35 @@ const (
 )
 
 // DetectAuthenticatorType detects what kind of authenticator is used
-func DetectAuthenticatorType(str string) AuthenticatorType {
-	// Eventually this could be more complicated
+func DetectAuthenticatorType(str string, whenMultipleMatch api.APIType) AuthenticatorType {
+	matches := 0
+	result := Unknown
 	if isMacaroon(str) {
-		return Macaroon
-	} else if isRune(str) {
-		return Rune
+		result = Macaroon
+		matches++
+	}
+	if isRune(str) {
+		result = Rune
+		matches++
 	}
 
-	return Unknown
+	if matches > 1 {
+		defaultType := ToAuthenticatorType(whenMultipleMatch)
+		if defaultType != Unknown {
+			result = defaultType
+		}
+	}
+
+	return result
 }
 
-// APITypeToAuthenticatorType returns what kind of authenticator a given API uses
-func APITypeToAuthenticatorType(t *api.APIType) AuthenticatorType {
-	if t == nil {
-		return Unknown
-	}
-
-	if *t == api.LndGrpc || *t == api.LndRest {
+// ToAuthenticatorType returns what kind of authenticator a given API uses
+func ToAuthenticatorType(t api.APIType) AuthenticatorType {
+	if t == api.LndGrpc || t == api.LndRest {
 		return Macaroon
 	}
 
-	if *t == api.ClnSocket {
+	if t == api.ClnSocket {
 		return Rune
 	}
 

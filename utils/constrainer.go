@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	api "github.com/bolt-observer/agent/lightning"
 	runes "github.com/bolt-observer/go-runes/runes"
 	"github.com/golang/glog"
 	"github.com/lightningnetwork/lnd/macaroons"
@@ -22,12 +23,12 @@ var (
 )
 
 // Constrain constrains a given authenticator
-func Constrain(original string, duration time.Duration) (string, error) {
+func Constrain(original string, duration time.Duration, defaultAPIType api.APIType) (string, error) {
 	if duration > time.Hour*24 {
 		return "", fmt.Errorf("duration too long")
 	}
 
-	classification := DetectAuthenticatorType(original)
+	classification := DetectAuthenticatorType(original, defaultAPIType)
 	if val, ok := mapping[classification]; ok {
 		return val(original, duration)
 	}
