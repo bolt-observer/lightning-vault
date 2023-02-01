@@ -371,7 +371,6 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if complainAboutInvalidAuthenticator(data) {
-		fmt.Printf("COMPLAIN %+v\n", data)
 		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - not compatible with API type")
 		return
 	}
