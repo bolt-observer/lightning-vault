@@ -227,8 +227,7 @@ func autoDetectAPIType(data *entities.Data) {
 		data.ApiType = intPtr(int(api.LndGrpc))
 	}
 
-	// TODO: change me
-	t := api.ClnSocket
+	t := api.ClnCommando
 	if local_utils.DetectAuthenticatorType(data.MacaroonHex, &t) == local_utils.Rune {
 		data.ApiType = intPtr(int(t))
 	}
@@ -297,8 +296,9 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.ApiType != nil {
-		_, err = api.GetAPIType(data.ApiType)
-		if err != nil {
+		t, err := api.GetAPIType(data.ApiType)
+
+		if err != nil || *t == api.ClnSocket {
 			h.badRequest(w, r, "invalid api type", fmt.Sprintf("[Put] invalid api type - %v", data.ApiType))
 		}
 	} else {
@@ -321,7 +321,7 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 				h.badRequest(w, r, "invalid endpoint", fmt.Sprintf("[Put] invalid endpoint - %s", data.Endpoint))
 				return
 			}
-		} else if *data.ApiType == int(api.LndRest) || *data.ApiType == int(api.ClnSocket) { // TODO: change to ClnCommando
+		} else if *data.ApiType == int(api.LndRest) || *data.ApiType == int(api.ClnCommando) {
 			hostname, port = extractHostnameAndPort(data.Endpoint)
 		} else {
 			h.badRequest(w, r, "unsupported api type", fmt.Sprintf("[Put] unsupported api type - %v", *data.ApiType))

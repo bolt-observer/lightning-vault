@@ -52,7 +52,7 @@ func ToAuthenticatorType(t api.APIType) AuthenticatorType {
 		return Macaroon
 	}
 
-	if t == api.ClnSocket {
+	if t == api.ClnCommando {
 		return Rune
 	}
 

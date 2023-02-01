@@ -26,6 +26,5 @@ func TestDetectAuthenticatorType(t *testing.T) {
 func TestToAuthenticatorType(t *testing.T) {
 	assert.Equal(t, Macaroon, ToAuthenticatorType(api.LndGrpc))
 	assert.Equal(t, Macaroon, ToAuthenticatorType(api.LndGrpc))
-	// TODO: change me
-	assert.Equal(t, Rune, ToAuthenticatorType(api.ClnSocket))
+	assert.Equal(t, Rune, ToAuthenticatorType(api.ClnCommando))
 }
