@@ -48,7 +48,7 @@ jobs:
         echo "DESCRIBE=$(git describe)" >> $GITHUB_ENV
 
     - name: Build and push container to ECR
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           DESCRIBE=${{ env.DESCRIBE }}
