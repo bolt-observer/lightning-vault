@@ -33,6 +33,7 @@ func GetConstrained(d *entities.Data, duration time.Duration) entities.Data {
 
 	mac, err := Constrain(d.MacaroonHex, duration, typ)
 	if err != nil {
+		// Censor macaroon on error
 		data.MacaroonHex = ""
 	} else {
 		data.MacaroonHex = mac

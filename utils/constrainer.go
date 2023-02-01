@@ -12,6 +12,8 @@ import (
 	macaroon "gopkg.in/macaroon.v2"
 )
 
+// Beware macaroon/rune must not leak in logs too!
+
 // ConstrainFunc is the method signature
 type ConstrainFunc func(string, time.Duration) (string, error)
 
@@ -87,6 +89,6 @@ func runeConstrainer(original string, duration time.Duration) (string, error) {
 }
 
 func unknownConstrainer(original string, duration time.Duration) (string, error) {
-	glog.Warningf("Trying to constraint unknown authenticator for %v", duration) // do not log original on purpose since it might be sensitive
+	glog.Warningf("Trying to constrain unknown authenticator for %v", duration) // do not log original on purpose since it is sensitive
 	return "", nil
 }
