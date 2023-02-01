@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -74,7 +74,7 @@ func GetData(name string, uniqueID string) (*entities.Data, error) {
 
 	defer resp.Body.Close()
 
-	b, _ := ioutil.ReadAll(resp.Body)
+	b, _ := io.ReadAll(resp.Body)
 	s := string(b)
 
 	decoder := json.NewDecoder(strings.NewReader(s))

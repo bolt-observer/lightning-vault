@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,7 +28,7 @@ func TestMainHandler(t *testing.T) {
 		t.Fatalf("expected a %d, instead got %d", want, got)
 	}
 
-	data, err := ioutil.ReadAll(w.Body)
+	data, err := io.ReadAll(w.Body)
 	if err != nil {
 		t.Fatalf("got error %v", err)
 	}
