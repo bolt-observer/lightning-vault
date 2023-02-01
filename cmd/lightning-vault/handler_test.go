@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	api "github.com/bolt-observer/agent/lightning"
 	entities "github.com/bolt-observer/go_common/entities"
 	local_utils "github.com/bolt-observer/lightning-vault/utils"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMainHandler(t *testing.T) {
@@ -449,4 +451,66 @@ func expectQuery(term, uniqueID string, h *Handlers, t *testing.T, expected int)
 	if want, got := expected, w.Result().StatusCode; want != got {
 		t.Fatalf("expected %d, instead got %d", want, got)
 	}
+}
+
+func TestAutoDetectAPIType(t *testing.T) {
+	data := &entities.Data{
+		Endpoint:    "http://bolt.observer",
+		MacaroonHex: "",
+	}
+
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.LndRest), *data.ApiType)
+	assert.Equal(t, false, strings.HasSuffix("http", data.Endpoint))
+
+	data.ApiType = nil
+	data.Endpoint = "https://bolt.observer:1234"
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.LndRest), *data.ApiType)
+	assert.Equal(t, false, strings.HasSuffix("http", data.Endpoint))
+
+	data.ApiType = nil
+	data.Endpoint = "bolt.observer:10009"
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.LndGrpc), *data.ApiType)
+
+	data.ApiType = nil
+	data.MacaroonHex = "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y"
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.ClnSocket), *data.ApiType) // TODO
+}
+
+func TestComplainAboutInvalidAuthenticator(t *testing.T) {
+	data := entities.Data{
+		Endpoint:    "http://bolt.observer",
+		MacaroonHex: "",
+	}
+
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.MacaroonHex = "0201036c6e640224030a10b493608461fb6e64810053fa31ef27991201301a0c0a04696e666f120472656164000216697061646472203139322e3136382e3139322e3136380000062072ea006233da839ce6e9f4721331a12041b228d36c0fdad552680f615766d2f4"
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.ClnSocket)) // TODO
+	assert.Equal(t, true, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndGrpc))
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndRest))
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndRest))
+	data.MacaroonHex = "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y"
+	assert.Equal(t, true, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndGrpc))
+	assert.Equal(t, true, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.ClnSocket)) // TODO
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
 }

@@ -214,29 +214,28 @@ func extractHostnameAndPort(endpoint string) (string, int) {
 
 func autoDetectAPIType(data *entities.Data) {
 	if strings.HasPrefix(data.Endpoint, "http") {
-		r := int(api.LndRest)
-		data.ApiType = &r
+		data.ApiType = intPtr(int(api.LndRest))
 
 		u, err := url.Parse(data.Endpoint)
 		if err != nil {
-			r := int(api.LndGrpc)
-			data.ApiType = &r
+			data.ApiType = intPtr(int(api.LndGrpc))
 		} else if u.Port() == "10009" {
-			r := int(api.LndGrpc)
-			data.ApiType = &r
+			data.ApiType = intPtr(int(api.LndGrpc))
 			data.Endpoint = u.Host
 		}
 	} else {
-		r := int(api.LndGrpc)
-		data.ApiType = &r
+		data.ApiType = intPtr(int(api.LndGrpc))
 	}
 
 	// TODO: change me
 	t := api.ClnSocket
 	if local_utils.DetectAuthenticatorType(data.MacaroonHex, &t) == local_utils.Rune {
-		r := int(api.ClnSocket) // Replace with ClnCommando
-		data.ApiType = &r
+		data.ApiType = intPtr(int(t))
 	}
+}
+
+func intPtr(i int) *int {
+	return &i
 }
 
 func complainAboutInvalidAuthenticator(data entities.Data) bool {
@@ -397,7 +396,8 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.VerifyCall(w, r, &data, data.PubKey, uniqueID) {
+	verify, err := strconv.ParseBool(utils.GetEnvWithDefault("VERIFY", "true"))
+	if err == nil && verify && !h.VerifyCall(w, r, &data, data.PubKey, uniqueID) {
 		return
 	}
 
@@ -454,7 +454,7 @@ func (h *Handlers) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.verify(w, r, &data, pubkey, uniqueID) {
+	if !h.VerifyCall(w, r, &data, pubkey, uniqueID) {
 		return
 	}
 
@@ -465,7 +465,7 @@ func (h *Handlers) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) verify(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
 	api := api.NewAPI(api.LndGrpc, func() (*entities.Data, error) { return data, nil })
 	if api == nil {
-		h.badRequest(w, r, "invalid credentials - check failed", "failed to get lnd client")
+		h.badRequest(w, r, "invalid credentials - check failed", "failed to get lightning client")
 		return false
 	}
 	defer api.Cleanup()
