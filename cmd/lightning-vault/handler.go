@@ -313,16 +313,21 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 
 	hostname := ""
 	port := -1
+	needCert := false
 
 	if data.ApiType != nil {
 		if *data.ApiType == int(api.LndGrpc) {
 			hostname, port = extractHostnameAndPort(data.Endpoint)
+			needCert = true
 			if port < 0 {
 				h.badRequest(w, r, "invalid endpoint", fmt.Sprintf("[Put] invalid endpoint - %s", data.Endpoint))
 				return
 			}
-		} else if *data.ApiType == int(api.LndRest) || *data.ApiType == int(api.ClnCommando) {
+		} else if *data.ApiType == int(api.LndRest) {
 			hostname, port = extractHostnameAndPort(data.Endpoint)
+			needCert = true
+		} else if *data.ApiType == int(api.ClnCommando) {
+			needCert = false
 		} else {
 			h.badRequest(w, r, "unsupported api type", fmt.Sprintf("[Put] unsupported api type - %v", *data.ApiType))
 		}
@@ -338,11 +343,13 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 			data.CertificateBase64 = orig.CertificateBase64
 		} else {
 			// TODO: deprecate this
-			data.CertificateBase64 = utils.ObtainCert(hostname)
+			if needCert {
+				data.CertificateBase64 = utils.ObtainCert(hostname)
+			}
 		}
 	}
 
-	if data.CertificateBase64 == "" {
+	if data.CertificateBase64 == "" && needCert {
 		h.badRequest(w, r, "empty certificate", "[Put] empty certificate")
 		return
 	}
@@ -355,11 +362,11 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 
 	if data.MacaroonHex == "" {
 		if !ok {
-			h.badRequest(w, r, "empty macaroon value", "[Put] empty macaroon value")
+			h.badRequest(w, r, "empty macaroon/rune value", "[Put] empty macaroon/rune value")
 			return
 		}
 
-		auditLog(r.Header.Get("Authorization"), r.RemoteAddr, "[Put] using old macaroon (no new one supplied)", r.Method)
+		auditLog(r.Header.Get("Authorization"), r.RemoteAddr, "[Put] using old macaroon/rune (no new one supplied)", r.Method)
 		data.MacaroonHex = orig.MacaroonHex
 	}
 
