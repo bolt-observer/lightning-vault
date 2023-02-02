@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	api "github.com/bolt-observer/agent/lightning"
 	entities "github.com/bolt-observer/go_common/entities"
 	local_utils "github.com/bolt-observer/lightning-vault/utils"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMainHandler(t *testing.T) {
@@ -27,7 +30,7 @@ func TestMainHandler(t *testing.T) {
 		t.Fatalf("expected a %d, instead got %d", want, got)
 	}
 
-	data, err := ioutil.ReadAll(w.Body)
+	data, err := io.ReadAll(w.Body)
 	if err != nil {
 		t.Fatalf("got error %v", err)
 	}
@@ -55,7 +58,6 @@ func TestPutHandler(t *testing.T) {
 		t.Fatalf("expected a %d, instead got %d", want, got)
 	}
 
-	// Don't worry macaroon is fake
 	valid := `{
 		"pubkey": "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7",
 		"macaroon_hex": "0201036c6e640224030a10b493608461fb6e64810053fa31ef27991201301a0c0a04696e666f120472656164000216697061646472203139322e3136382e3139322e3136380000062072ea006233da839ce6e9f4721331a12041b228d36c0fdad552680f615766d2f4",
@@ -131,6 +133,47 @@ func TestPutHandlerWithNoApiType(t *testing.T) {
 	}
 }
 
+func TestPutHandlerInvalidAuthenticator(t *testing.T) {
+
+	r := httptest.NewRequest(http.MethodPost, "https://localhost/put/", nil)
+	w := httptest.NewRecorder()
+
+	h := MakeNewHandlers()
+
+	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
+		return true
+	}
+
+	prometheusInit()
+	h.PutHandler(w, r)
+
+	if want, got := http.StatusBadRequest, w.Result().StatusCode; want != got {
+		t.Fatalf("expected a %d, instead got %d", want, got)
+	}
+
+	// Don't worry macaroon is fake
+	valid := `{
+		"pubkey": "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7",
+		"macaroon_hex": "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y",
+		"certificate_base64": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNKakNDQWN5Z0F3SUJBZ0lRUmU4QzhCcURubEF3b0VxRjdMRTVGREFLQmdncWhrak9QUVFEQWpBeE1SOHcKSFFZRFZRUUtFeFpzYm1RZ1lYVjBiMmRsYm1WeVlYUmxaQ0JqWlhKME1RNHdEQVlEVlFRREV3VmhiR2xqWlRBZQpGdzB5TXpBeE1ESXhOVE0xTXpsYUZ3MHlOREF5TWpjeE5UTTFNemxhTURFeEh6QWRCZ05WQkFvVEZteHVaQ0JoCmRYUnZaMlZ1WlhKaGRHVmtJR05sY25ReERqQU1CZ05WQkFNVEJXRnNhV05sTUZrd0V3WUhLb1pJemowQ0FRWUkKS29aSXpqMERBUWNEUWdBRXlKaHRYWk1NT0NQYzYxWmlISmVyKzdHUm9HalFzcWtNcjdvQVVjNnZsZC9JNDl2SwpHR01mRjhMcDhTSm1jNlJVOHQxN3FEZFhyUmZMbTdLSjB0eDBkcU9CeFRDQndqQU9CZ05WSFE4QkFmOEVCQU1DCkFxUXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEUKRmdRVU5BUW5BYVBNOStrZEpxMXdud2FtbldpY1d1SXdhd1lEVlIwUkJHUXdZb0lGWVd4cFkyV0NDV3h2WTJGcwphRzl6ZElJRllXeHBZMldDRG5CdmJHRnlMVzQyTFdGc2FXTmxnZ1IxYm1sNGdncDFibWw0Y0dGamEyVjBnZ2RpCmRXWmpiMjV1aHdSL0FBQUJoeEFBQUFBQUFBQUFBQUFBQUFBQUFBQUJod1NzR0FBQ01Bb0dDQ3FHU000OUJBTUMKQTBnQU1FVUNJUUQ2dElDMVdTWFRWNkpuSzVlN3FkdDRBVHp2Q0ZHUldPTmp2T29tUUdScXB3SWdiR1ZJWFVPbgpHamlUdTZ5MXVMT1pRS0VPTnB1MXZkYUNKejVpanNRdlVndz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+		"endpoint": "192.168.192.168:10009",
+		"api_type": 0
+	  }
+	`
+	r = httptest.NewRequest(http.MethodPost, "https://localhost/put", strings.NewReader(valid))
+	w = httptest.NewRecorder()
+
+	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+		return "", local_utils.Inserted, nil
+	}
+
+	h.PutHandler(w, r)
+
+	if want, got := http.StatusBadRequest, w.Result().StatusCode; want != got {
+		t.Fatalf("expected not %d, instead got %d", want, got)
+	}
+}
+
 func TestUniqueId(t *testing.T) {
 	// Don't worry macaroon is fake
 	valid := `{
@@ -201,10 +244,21 @@ func TestUniqueId(t *testing.T) {
 	}
 }
 
-func TestReadMyWrite(t *testing.T) {
+func TestReadMyWriteMacaroon(t *testing.T) {
 	pubKey := "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7"
 	origMac := "0201036c6e640224030a10b493608461fb6e64810053fa31ef27991201301a0c0a04696e666f120472656164000216697061646472203139322e3136382e3139322e3136380000062072ea006233da839ce6e9f4721331a12041b228d36c0fdad552680f615766d2f4"
 
+	readMyWrite(t, pubKey, origMac)
+}
+
+func TestReadMyWriteRune(t *testing.T) {
+	pubKey := "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7"
+	origMac := "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y"
+
+	readMyWrite(t, pubKey, origMac)
+}
+
+func readMyWrite(t *testing.T, pubKey, origMac string) {
 	h := MakeNewHandlers()
 	prometheusInit()
 
@@ -249,6 +303,7 @@ func TestReadMyWrite(t *testing.T) {
 
 	mac1 := expectRead(pubKey, pubKey, "", h, t)
 	expectQuery(pubKey, "", h, t, http.StatusOK)
+	time.Sleep(1 * time.Second)
 	mac2 := expectRead("test", pubKey, "", h, t)
 	expectQuery("test", "", h, t, http.StatusOK)
 
@@ -395,4 +450,66 @@ func expectQuery(term, uniqueID string, h *Handlers, t *testing.T, expected int)
 	if want, got := expected, w.Result().StatusCode; want != got {
 		t.Fatalf("expected %d, instead got %d", want, got)
 	}
+}
+
+func TestAutoDetectAPIType(t *testing.T) {
+	data := &entities.Data{
+		Endpoint:    "http://bolt.observer",
+		MacaroonHex: "",
+	}
+
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.LndRest), *data.ApiType)
+	assert.Equal(t, false, strings.HasSuffix("http", data.Endpoint))
+
+	data.ApiType = nil
+	data.Endpoint = "https://bolt.observer:1234"
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.LndRest), *data.ApiType)
+	assert.Equal(t, false, strings.HasSuffix("http", data.Endpoint))
+
+	data.ApiType = nil
+	data.Endpoint = "bolt.observer:10009"
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.LndGrpc), *data.ApiType)
+
+	data.ApiType = nil
+	data.MacaroonHex = "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y"
+	autoDetectAPIType(data)
+	assert.NotNil(t, data.ApiType)
+	assert.Equal(t, int(api.ClnCommando), *data.ApiType)
+}
+
+func TestComplainAboutInvalidAuthenticator(t *testing.T) {
+	data := entities.Data{
+		Endpoint:    "http://bolt.observer",
+		MacaroonHex: "",
+	}
+
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.MacaroonHex = "0201036c6e640224030a10b493608461fb6e64810053fa31ef27991201301a0c0a04696e666f120472656164000216697061646472203139322e3136382e3139322e3136380000062072ea006233da839ce6e9f4721331a12041b228d36c0fdad552680f615766d2f4"
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.ClnCommando))
+	assert.Equal(t, true, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndGrpc))
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndRest))
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndRest))
+	data.MacaroonHex = "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y"
+	assert.Equal(t, true, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.LndGrpc))
+	assert.Equal(t, true, complainAboutInvalidAuthenticator(data))
+
+	data.ApiType = intPtr(int(api.ClnCommando))
+	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
 }

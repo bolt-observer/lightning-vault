@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
@@ -67,7 +68,7 @@ func InvalidateSecret(ctx context.Context, name string) (string, error) {
 	svc := secretsmanager.NewFromConfig(cfg)
 
 	listInput := &secretsmanager.ListSecretsInput{
-		MaxResults: 1,
+		MaxResults: aws.Int32(1),
 		Filters:    []types.Filter{{Key: types.FilterNameStringTypeName, Values: []string{name}}},
 	}
 
@@ -159,7 +160,7 @@ func InsertOrUpdateSecret(ctx context.Context, name, value string) (string, Chan
 	svc := secretsmanager.NewFromConfig(cfg)
 
 	listInput := &secretsmanager.ListSecretsInput{
-		MaxResults: 1,
+		MaxResults: aws.Int32(1),
 		Filters:    []types.Filter{{Key: types.FilterNameStringTypeName, Values: []string{name}}},
 	}
 
@@ -282,7 +283,7 @@ func listSecrets(ctx context.Context, prefix string) []string {
 
 	for {
 		input := &secretsmanager.ListSecretsInput{
-			MaxResults: 100,
+			MaxResults: aws.Int32(100),
 			NextToken:  result.NextToken,
 			Filters:    []types.Filter{{Key: types.FilterNameStringTypeName, Values: []string{prefix}}},
 		}

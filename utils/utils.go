@@ -3,6 +3,7 @@ package utils
 import (
 	"time"
 
+	api "github.com/bolt-observer/agent/lightning"
 	entities "github.com/bolt-observer/go_common/entities"
 )
 
@@ -25,8 +26,14 @@ func GetConstrained(d *entities.Data, duration time.Duration) entities.Data {
 	data.ApiType = d.ApiType
 	data.CertVerificationType = d.CertVerificationType
 
-	mac, err := ConstraintMacaroon(d.MacaroonHex, duration)
+	typ, err := api.GetAPIType(d.ApiType)
 	if err != nil {
+		typ = nil
+	}
+
+	mac, err := Constrain(d.MacaroonHex, duration, typ)
+	if err != nil {
+		// Censor macaroon on error
 		data.MacaroonHex = ""
 	} else {
 		data.MacaroonHex = mac

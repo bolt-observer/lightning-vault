@@ -212,7 +212,54 @@ func extractHostnameAndPort(endpoint string) (string, int) {
 	return u.Hostname(), port
 }
 
-// PutHandler - put a macaroo
+func autoDetectAPIType(data *entities.Data) {
+	if strings.HasPrefix(data.Endpoint, "http") {
+		data.ApiType = intPtr(int(api.LndRest))
+
+		u, err := url.Parse(data.Endpoint)
+		if err != nil {
+			data.ApiType = intPtr(int(api.LndGrpc))
+		} else if u.Port() == "10009" {
+			data.ApiType = intPtr(int(api.LndGrpc))
+			data.Endpoint = u.Host
+		}
+	} else {
+		data.ApiType = intPtr(int(api.LndGrpc))
+	}
+
+	t := api.ClnCommando
+	if local_utils.DetectAuthenticatorType(data.MacaroonHex, &t) == local_utils.Rune {
+		data.ApiType = intPtr(int(t))
+	}
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func complainAboutInvalidAuthenticator(data entities.Data) bool {
+	if data.ApiType == nil {
+		return false
+	}
+
+	apiType, err := api.GetAPIType(data.ApiType)
+	if err != nil || apiType == nil {
+		return false
+	}
+
+	a := local_utils.ToAuthenticatorType(*apiType)
+	b := local_utils.DetectAuthenticatorType(data.MacaroonHex, apiType)
+
+	if a == local_utils.Unknown {
+		return false
+	}
+
+	// If type is known the used authenticator needs to match
+
+	return a != b
+}
+
+// PutHandler - put a macaroon
 func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 	var data entities.Data
 
@@ -249,9 +296,9 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.ApiType != nil {
-		_, err = api.GetAPIType(data.ApiType)
+		t, err := api.GetAPIType(data.ApiType)
 
-		if err != nil {
+		if err != nil || *t == api.ClnSocket {
 			h.badRequest(w, r, "invalid api type", fmt.Sprintf("[Put] invalid api type - %v", data.ApiType))
 		}
 	} else {
@@ -260,25 +307,7 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 				data.ApiType = orig.ApiType
 			}
 		} else {
-			// TODO: deprecate this
-			if strings.HasPrefix(data.Endpoint, "http") {
-				r := int(api.LndRest)
-				data.ApiType = &r
-
-				u, err := url.Parse(data.Endpoint)
-				if err != nil {
-					r := int(api.LndGrpc)
-					data.ApiType = &r
-				} else if u.Port() == "10009" {
-					r := int(api.LndGrpc)
-					data.ApiType = &r
-					data.Endpoint = u.Host
-				}
-			} else {
-				r := int(api.LndGrpc)
-				data.ApiType = &r
-			}
-
+			autoDetectAPIType(&data)
 		}
 	}
 
@@ -292,7 +321,7 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 				h.badRequest(w, r, "invalid endpoint", fmt.Sprintf("[Put] invalid endpoint - %s", data.Endpoint))
 				return
 			}
-		} else if *data.ApiType == int(api.LndRest) {
+		} else if *data.ApiType == int(api.LndRest) || *data.ApiType == int(api.ClnCommando) {
 			hostname, port = extractHostnameAndPort(data.Endpoint)
 		} else {
 			h.badRequest(w, r, "unsupported api type", fmt.Sprintf("[Put] unsupported api type - %v", *data.ApiType))
@@ -341,9 +370,19 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = local_utils.ConstraintMacaroon(data.MacaroonHex, 1*time.Minute)
+	if complainAboutInvalidAuthenticator(data) {
+		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - not compatible with API type")
+		return
+	}
+
+	apiType, err := api.GetAPIType(data.ApiType)
 	if err != nil {
-		h.badRequest(w, r, "invalid macaroon", "[Put] invalid macaroon")
+		apiType = nil
+	}
+
+	_, err = local_utils.Constrain(data.MacaroonHex, 1*time.Minute, apiType)
+	if err != nil {
+		h.badRequest(w, r, "invalid macaroon/rune", "[Put] invalid macaroon/rune - could not constrain")
 		return
 	}
 
@@ -356,7 +395,8 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.VerifyCall(w, r, &data, data.PubKey, uniqueID) {
+	verify, err := strconv.ParseBool(utils.GetEnvWithDefault("VERIFY", "true"))
+	if err == nil && verify && !h.VerifyCall(w, r, &data, data.PubKey, uniqueID) {
 		return
 	}
 
@@ -413,7 +453,7 @@ func (h *Handlers) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.verify(w, r, &data, pubkey, uniqueID) {
+	if !h.VerifyCall(w, r, &data, pubkey, uniqueID) {
 		return
 	}
 
@@ -424,7 +464,7 @@ func (h *Handlers) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) verify(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
 	api := api.NewAPI(api.LndGrpc, func() (*entities.Data, error) { return data, nil })
 	if api == nil {
-		h.badRequest(w, r, "invalid credentials - check failed", "failed to get lnd client")
+		h.badRequest(w, r, "invalid credentials - check failed", "failed to get lightning client")
 		return false
 	}
 	defer api.Cleanup()
