@@ -1,10 +1,10 @@
 # Lightning Vault
 
-Lightning Vault is a secure secrets solutionfor storing lightning node authentication tokens in AWS environment. Purpose of this is to limit the fallout of potential credential leak or security incident and apply rolling credential principles to lightning network infrastructure.
+Lightning Vault is a secure secrets solution for storing lightning node authentication tokens in AWS environment. Purpose of this is to limit the fallout of potential credential leak or security incident and apply rolling credential principles to lightning network infrastructure.
 
 By design original secret can never be retrieved, you can only request a time-restricted version of it from the service. This way your applications can interact with your nodes but always use expiring credentials.
 
-Currently only supports LND (macaroons).
+Supports [LND](https://github.com/lightningnetwork/lnd/) (macaroons) and [CoreLightning](https://github.com/ElementsProject/lightning) (runes).
 
 ## Requirements
 
@@ -124,7 +124,7 @@ Vault is meant to be deployed as a standalne service with priviledged access to 
 
 Vault supports following operations:
 
-* Adding a macaroon
+* Adding a macaroon or rune
 
   This is done with HTTP POST request to `/put/` endpoint. Another request to same endpoint will overwrite previously stored data. Initial creation of a macaroon returns HTTP 201 (Created) response
   while subsequent (over)writes will return HTTP 200. For this operation `write` permissions are required. As described later this includes the verification part which will actually try to connect to
@@ -143,17 +143,19 @@ Vault supports following operations:
 
   `pubkey` is the public key of the node, `macaroon_hex` is the serialized version of the macaroon as a hex string (you can obtain it using ```xxd -p -c 10000 file.macaroon```), `certificate_base64` is the X.509 certificate as a base64 string (obtained using ```base64 tls.cert | tr -d "\n"```and `endpoint` is the endpoint of the lightning node.
 
-* Removing a macaroon
+  When adding a rune the name of the field is still `macaroon_hex`. The value is base64 encoded rune which you can get using `lightning-cli commando-rune restrictions=readonly` (copy `rune`). Field `endpoint` should be the lightning port (e.g., 127.0.0.1:9735) and `certificate_base64` can be omitted.
+
+* Removing a macaroon/rune
 
   Is done using HTTP POST request to `/delete/:pubkey/` endpoint. This operation also requires `write` permissions.
 
-* Getting a restricted macaroon (this is the typical mode of operation)
+* Getting a restricted macaroon/run (this is the typical mode of operation)
 
-  Is obtained through `/get/:pubkey/` HTTP GET request. The restriction of the macaroon depends on your role/permissions and can be either 10 minutes, 1 hour or 1 day (which means you need `read` permissions).
+  Is obtained through `/get/:pubkey/` HTTP GET request. The restriction depends on your role/permissions and can be either 10 minutes, 1 hour or 1 day (which means you need `read` permissions).
 
-* Verifying whether a macaroon works
+* Verifying whether a macaroon/rune works
 
-  Is done automatically while adding a macaroon but you can invoke that step independently too using `/verify/:pubkey/` HTTP GET method. Similar to adding a macaroon this requires `write` permissions.
+  Is done automatically while adding a macaroon/rune (unless you have `VERIFY` environment variable set to `false`) but you can invoke that step independently too using `/verify/:pubkey/` HTTP GET method. Similar to adding a macaroon/rune this requires `write` permissions.
   Note that this can be quite slow as Vault will actually try to connect to your lightning node.
 
 * Querying whether a macaroon exists
