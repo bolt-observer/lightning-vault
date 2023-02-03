@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -512,4 +513,56 @@ func TestComplainAboutInvalidAuthenticator(t *testing.T) {
 
 	data.ApiType = intPtr(int(api.ClnCommando))
 	assert.Equal(t, false, complainAboutInvalidAuthenticator(data))
+}
+
+func getBody(w *httptest.ResponseRecorder) string {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(w.Result().Body)
+	defer w.Result().Body.Close()
+	return buf.String()
+}
+
+func TestPutHandlerNeedsCert(t *testing.T) {
+	h := MakeNewHandlers()
+
+	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
+		return true
+	}
+
+	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+		return "", local_utils.Inserted, nil
+	}
+
+	prometheusInit()
+
+	valid := `{
+		"pubkey": "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7",
+		"macaroon_hex": "0201036c6e640224030a10b493608461fb6e64810053fa31ef27991201301a0c0a04696e666f120472656164000216697061646472203139322e3136382e3139322e3136380000062072ea006233da839ce6e9f4721331a12041b228d36c0fdad552680f615766d2f4",
+		"endpoint": "127.0.0.1:10009"
+	  }
+	`
+	r := httptest.NewRequest(http.MethodPost, "https://localhost/put", strings.NewReader(valid))
+	w := httptest.NewRecorder()
+
+	h.PutHandler(w, r)
+
+	// When you supply macaroon, certificate is required
+	assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	assert.Equal(t, "Bad request - empty certificate", strings.Trim(getBody(w), "\n\r"))
+
+	valid = `{
+		"pubkey": "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7",
+		"macaroon_hex": "tU-RLjMiDpY2U0o3W1oFowar36RFGpWloPbW9-RuZdo9MyZpZD0wMjRiOWExZmE4ZTAwNmYxZTM5MzdmNjVmNjZjNDA4ZTZkYThlMWNhNzI4ZWE0MzIyMmE3MzgxZGYxY2M0NDk2MDUmbWV0aG9kPWxpc3RwZWVycyZwbnVtPTEmcG5hbWVpZF4wMjRiOWExZmE4ZTAwNmYxZTM5M3xwYXJyMF4wMjRiOWExZmE4ZTAwNmYxZTM5MyZ0aW1lPDE2NTY5MjA1MzgmcmF0ZT0y",
+		"endpoint": "127.0.0.1:10009"
+	  }
+	`
+
+	r = httptest.NewRequest(http.MethodPost, "https://localhost/put", strings.NewReader(valid))
+	w = httptest.NewRecorder()
+
+	h.PutHandler(w, r)
+
+	// When you supply rune, no certificate is needed
+	assert.Equal(t, http.StatusCreated, w.Result().StatusCode)
+	assert.Equal(t, "Inserted secret 0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7", strings.Trim(getBody(w), "\n\r"))
 }
