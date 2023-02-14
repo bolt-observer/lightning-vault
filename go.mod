@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.17.3
 	github.com/aws/aws-sdk-go-v2/config v1.18.10
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.18.2
-	github.com/bolt-observer/agent v0.0.44
+	github.com/bolt-observer/agent v0.0.46
 	github.com/bolt-observer/go-runes v0.0.1
 	github.com/bolt-observer/go_common v0.0.9
 	github.com/cabify/gotoprom v1.1.0
