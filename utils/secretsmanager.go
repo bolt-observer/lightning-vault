@@ -12,17 +12,15 @@ import (
 	"github.com/getsentry/sentry-go"
 
 	"github.com/golang/glog"
+
+	backoff "github.com/cenkalti/backoff/v4"
 )
+
+// MaxRetryTime is the maximum time we will retry AWS cals
+const MaxRetryTime = 30 * time.Second
 
 // Change enum
 type Change int
-
-const (
-	// MaxTries is the maximum number of retries to AWS API
-	MaxTries = 3
-	// Sleep is the amount of time we wait before retrying
-	Sleep = 1 * time.Second
-)
 
 // Change enum values
 const (
@@ -107,45 +105,42 @@ func InvalidateSecret(ctx context.Context, name string) (string, error) {
 	return "", fmt.Errorf("cannot invalidate secret that does not exist: %s", name)
 }
 
-// TODO: this is quite ugly, eventually replace with generic retry function that takes a function as parameter
+// InsertOrUpdateSecretData struct
+type InsertOrUpdateSecretData struct {
+	Arn    string
+	Change Change
+}
 
 // InsertOrUpdateSecretWithRetries - calls InsertOrUpdateSecret with retry logic
 func InsertOrUpdateSecretWithRetries(ctx context.Context, name, value string) (string, Change, error) {
-	var (
-		err error = nil
-		a   string
-		b   Change
-	)
+	back := backoff.NewExponentialBackOff()
+	back.MaxElapsedTime = MaxRetryTime
 
-	for try := 0; try < MaxTries; try++ {
-		a, b, err = InsertOrUpdateSecret(ctx, name, value)
-		if err == nil {
-			return a, b, nil
-		}
+	s, err := backoff.RetryNotifyWithData(func() (InsertOrUpdateSecretData, error) {
+		arn, change, err := InsertOrUpdateSecret(ctx, name, value)
+		return InsertOrUpdateSecretData{
+			Arn:    arn,
+			Change: change,
+		}, err
+	}, back, func(err error, d time.Duration) {
+		glog.Warningf("Error inserting or updating secret")
+	})
 
-		time.Sleep(Sleep)
-	}
-
-	return a, b, err
+	return s.Arn, s.Change, err
 }
 
 // InvalidateSecretWithRetries calls InvalidateSecret with retry logic
 func InvalidateSecretWithRetries(ctx context.Context, name string) (string, error) {
-	var (
-		err error = nil
-		a   string
-	)
+	back := backoff.NewExponentialBackOff()
+	back.MaxElapsedTime = MaxRetryTime
 
-	for try := 0; try < MaxTries; try++ {
-		a, err = InvalidateSecret(ctx, name)
-		if err == nil {
-			return a, nil
-		}
+	resp, err := backoff.RetryNotifyWithData(func() (string, error) {
+		return InvalidateSecret(ctx, name)
+	}, back, func(err error, d time.Duration) {
+		glog.Warningf("Error invalidating secret")
+	})
 
-		time.Sleep(Sleep)
-	}
-
-	return a, err
+	return resp, err
 }
 
 // InsertOrUpdateSecret - inserts or updates a secret
