@@ -25,6 +25,7 @@ require (
 )
 
 require (
+	github.com/ReneKroon/ttlcache v1.7.0 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.10 // indirect

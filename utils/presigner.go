@@ -13,8 +13,12 @@ import (
 
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/config"
+	backoff "github.com/cenkalti/backoff/v4"
+	"github.com/golang/glog"
 
 	utils "github.com/bolt-observer/go_common/utils"
+
+	"github.com/ReneKroon/ttlcache"
 )
 
 // We use AWS pre-signed URLs here which can be used as an effective way to use IAM authentication for a custom app,
@@ -39,25 +43,50 @@ type GetCallerIdentityResult struct {
 	Account string `xml:"Account"`
 }
 
+const (
+	// DefaultCacheTime should be lower than token validity
+	DefaultCacheTime = 2 * time.Minute
+	// DefaultValidity is the default for new tokens
+	DefaultValidity = 5 * time.Minute
+
+	// HTTPRetryTime for doing the check on AWS STS
+	HTTPRetryTime = 3 * time.Second
+)
+
 var (
-	region   string
-	service  string
-	endpoint string
+	region        string
+	service       string
+	endpoint      string
+	tokenCache    *ttlcache.Cache
+	identityCache *ttlcache.Cache
 )
 
 func init() {
 	region = utils.GetEnvWithDefault("AWS_DEFAULT_REGION", "us-east-1")
 	service = "sts"
 	endpoint = fmt.Sprintf("https://%s.%s.amazonaws.com/", service, region)
+
+	tokenCache = ttlcache.NewCache()
+	tokenCache.SetTTL(DefaultCacheTime)
+	tokenCache.SkipTtlExtensionOnHit(true)
+
+	identityCache = ttlcache.NewCache()
+	identityCache.SetTTL(DefaultCacheTime)
+	identityCache.SkipTtlExtensionOnHit(true)
 }
 
 // VerifyGetCallerIdentity will verify that query string received is actually a presigned URL
 // to sts/GetCallerIdentity.
 // Returns:
-//  - ARN of the identity when successful
-//  - error else
+//   - ARN of the identity when successful
+//   - error else
 func VerifyGetCallerIdentity(query string, timeout time.Duration) (string, error) {
 	var identity GetCallerIdentityResponse
+
+	val, cached := tokenCache.Get(query)
+	if cached {
+		return val.(string), nil
+	}
 
 	if strings.ContainsAny(query, "@?/") || strings.HasPrefix(query, "http") {
 		return "", fmt.Errorf("invalid query string")
@@ -81,7 +110,7 @@ func VerifyGetCallerIdentity(query string, timeout time.Duration) (string, error
 	req.URL.RawQuery = "Action=GetCallerIdentity&Version=2011-06-15&" + query
 
 	if int64(timeout) <= 0 {
-		timeout = 5 * time.Second
+		timeout = DefaultValidity
 	}
 
 	client := &http.Client{
@@ -92,7 +121,14 @@ func VerifyGetCallerIdentity(query string, timeout time.Duration) (string, error
 		return "", fmt.Errorf("hostname trickery detected, %s", req.URL.Hostname())
 	}
 
-	resp, err := client.Do(req)
+	back := backoff.NewExponentialBackOff()
+	back.MaxElapsedTime = HTTPRetryTime
+
+	resp, err := backoff.RetryNotifyWithData(func() (*http.Response, error) {
+		return client.Do(req)
+	}, back, func(err error, d time.Duration) {
+		glog.Warningf("Error calling VerifyGetCallerIdentity")
+	})
 	if err != nil {
 		return "", fmt.Errorf("unable to make request, %v", err)
 	}
@@ -117,6 +153,7 @@ func VerifyGetCallerIdentity(query string, timeout time.Duration) (string, error
 		return "", fmt.Errorf("empty result")
 	}
 
+	tokenCache.Set(query, identity.GetCallerIdentityResult.Arn)
 	return identity.GetCallerIdentityResult.Arn, nil
 }
 
@@ -127,6 +164,11 @@ func VerifyGetCallerIdentity(query string, timeout time.Duration) (string, error
 // - error (when not successful)
 func PresignGetCallerIdentity(validity time.Duration) (string, error) {
 	ctx := context.Background()
+
+	val, cached := identityCache.Get(validity.String())
+	if cached {
+		return val.(string), nil
+	}
 
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
@@ -155,7 +197,7 @@ func PresignGetCallerIdentity(validity time.Duration) (string, error) {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	if int64(validity) <= 0 {
-		validity = 5 * time.Minute
+		validity = DefaultValidity
 	}
 
 	query.Set("X-Amz-Expires", strconv.FormatInt(int64(validity/time.Second), 10))
@@ -180,5 +222,15 @@ func PresignGetCallerIdentity(validity time.Duration) (string, error) {
 
 	gu.RawQuery = nq.Encode()
 
+	if validity < DefaultValidity {
+		cacheValidity := validity
+		cacheValidity -= 1 * time.Minute
+		if cacheValidity < 0 {
+			cacheValidity = 1 * time.Minute
+		}
+		identityCache.SetWithTTL(validity.String(), gu.RawQuery, cacheValidity)
+	} else {
+		identityCache.Set(validity.String(), gu.RawQuery)
+	}
 	return gu.RawQuery, nil
 }
