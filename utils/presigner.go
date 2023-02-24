@@ -54,10 +54,12 @@ const (
 )
 
 var (
-	region        string
-	service       string
-	endpoint      string
-	tokenCache    *ttlcache.Cache
+	region   string
+	service  string
+	endpoint string
+	// token cache is used to cache AWS STS responses (VerifyGetCallerIdentity), if we are on server-side
+	tokenCache *ttlcache.Cache
+	// identity cache is used to cache token (PresignGetCallerIdentity), if we are the client
 	identityCache *ttlcache.Cache
 )
 
@@ -222,13 +224,12 @@ func PresignGetCallerIdentity(validity time.Duration) (string, error) {
 
 	gu.RawQuery = nq.Encode()
 
-	if validity < DefaultValidity {
-		cacheValidity := validity
-		cacheValidity -= 1 * time.Minute
-		if cacheValidity < 0 {
-			cacheValidity = 1 * time.Minute
+	if validity != DefaultValidity {
+		cacheValidity := validity - 1*time.Minute // we just want a bit faster expiration than the validity of the token
+		if cacheValidity > 0 {
+			identityCache.SetWithTTL(validity.String(), gu.RawQuery, cacheValidity)
 		}
-		identityCache.SetWithTTL(validity.String(), gu.RawQuery, cacheValidity)
+		// if validity less than 1 minute it does not even make sense to cache token
 	} else {
 		identityCache.Set(validity.String(), gu.RawQuery)
 	}
