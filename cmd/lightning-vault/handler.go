@@ -192,7 +192,11 @@ func extractHostnameAndPort(endpoint string) (string, int) {
 	u, err := url.Parse(uri)
 
 	if err != nil {
-		s := strings.Split(endpoint, ":")
+		// Handle the [::1]:1337 IPv6 corner case
+		re := regexp.MustCompile(`\[.+\]`)
+		sanitized := re.ReplaceAllString(endpoint, "")
+
+		s := strings.Split(sanitized, ":")
 		port := -1
 		if len(s) > 1 {
 			port, err := strconv.Atoi(s[1])
