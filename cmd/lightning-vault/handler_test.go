@@ -566,3 +566,47 @@ func TestPutHandlerNeedsCert(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, w.Result().StatusCode)
 	assert.Equal(t, "Inserted secret 0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7", strings.Trim(getBody(w), "\n\r"))
 }
+
+func TestExtractHostnameAndPort(t *testing.T) {
+	endpoint := "[::1]:1337"
+
+	host, port := extractHostnameAndPort(endpoint)
+	assert.Equal(t, 1337, port)
+	assert.Equal(t, "::1", host)
+
+	endpoint = "127.0.0.1:1338"
+
+	host, port = extractHostnameAndPort(endpoint)
+	assert.Equal(t, 1338, port)
+	assert.Equal(t, "127.0.0.1", host)
+
+	endpoint = "burek:1000000"
+
+	host, port = extractHostnameAndPort(endpoint)
+	assert.Equal(t, -1, port)
+	assert.Equal(t, "burek", host)
+
+	endpoint = "some.host.name"
+
+	host, port = extractHostnameAndPort(endpoint)
+	assert.Equal(t, -1, port)
+	assert.Equal(t, "some.host.name", host)
+
+	endpoint = "https://some.host.name:1339/foo"
+
+	host, port = extractHostnameAndPort(endpoint)
+	assert.Equal(t, 1339, port)
+	assert.Equal(t, "some.host.name", host)
+
+	endpoint = "http://[::1]:1339/foo"
+
+	host, port = extractHostnameAndPort(endpoint)
+	assert.Equal(t, 1339, port)
+	assert.Equal(t, "::1", host)
+
+	endpoint = "http://[2::2]/foo"
+
+	host, port = extractHostnameAndPort(endpoint)
+	assert.Equal(t, 80, port)
+	assert.Equal(t, "2::2", host)
+}
