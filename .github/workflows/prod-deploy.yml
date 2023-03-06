@@ -44,14 +44,15 @@ jobs:
       run: |
         # shellcheck disable=SC2086
         echo "DESCRIBE=$(git describe)" >> $GITHUB_ENV
+        echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-    - name: Build and push container to ECR
+    - name: Build and push containers
       uses: docker/build-push-action@v4
       with:
         build-args: |
           DESCRIBE=${{ env.DESCRIBE }}
         push: true
-        tags: ${{ steps.login-ecr.outputs.registry }}/macaroon_vault:${{ env.ENV }}
+        tags: ${{ steps.login-ecr.outputs.registry }}/macaroon_vault:${{ env.ENV }},ghcr.io/bolt-observer/agent:latest
         platforms: linux/amd64,linux/arm64
         file: ./Dockerfile
         cache-from: type=gha
