@@ -80,6 +80,7 @@ jobs:
         AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
         SENTRY_DSN_STAGING: ${{ secrets.SENTRY_DSN_STAGING }}
         SENTRY_DSN_PRODUCTION: ${{ secrets.SENTRY_DSN_PRODUCTION }}
+        SENTRY_DSN_DEV: ${{ secrets.SENTRY_DSN_DEV }}
         SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
         STAGING_READ_API_KEY_10M: ${{ secrets.STAGING_READ_API_KEY_10M }}
         STAGING_READ_API_KEY_1H: ${{ secrets.STAGING_READ_API_KEY_1H }}
@@ -89,6 +90,10 @@ jobs:
         PRODUCTION_READ_API_KEY_1H: ${{ secrets.PRODUCTION_READ_API_KEY_1H }}
         PRODUCTION_READ_API_KEY_1D: ${{ secrets.PRODUCTION_READ_API_KEY_1D }}
         PRODUCTION_WRITE_API_KEY: ${{ secrets.PRODUCTION_WRITE_API_KEY }}
+        DEV_READ_API_KEY_10M: ${{ secrets.DEV_READ_API_KEY_10M }}
+        DEV_READ_API_KEY_1H: ${{ secrets.DEV_READ_API_KEY_1H }}
+        DEV_READ_API_KEY_1D: ${{ secrets.DEV_READ_API_KEY_1D }}
+        DEV_WRITE_API_KEY: ${{ secrets.DEV_WRITE_API_KEY }}
       run: |
          # shellcheck disable=SC2086
          nix-channel --add ${{ env.NIX_CHANNEL }} nixpkgs
@@ -113,6 +118,12 @@ jobs:
            export READ_API_KEY_1H=$STAGING_READ_API_KEY_1H
            export READ_API_KEY_1D=$STAGING_READ_API_KEY_1D
            export WRITE_API_KEY=$STAGING_WRITE_API_KEY
+         elif [ "$ENV" == "dev" ]; then
+           export SENTRY_DSN=$SENTRY_DSN_DEV
+           export READ_API_KEY_10M=$DEV_READ_API_KEY_10M
+           export READ_API_KEY_1H=$DEV_READ_API_KEY_1H
+           export READ_API_KEY_1D=$DEV_READ_API_KEY_1D
+           export WRITE_API_KEY=$DEV_WRITE_API_KEY
          else
            echo "Enviroment ${ENV} not supported yet"
          fi

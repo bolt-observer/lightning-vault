@@ -1,12 +1,10 @@
-name: 'Deploy to staging'
+name: 'Deploy to dev'
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ "main" ]
 
 env:
-  ENV: staging
+  ENV: dev
   DOCKER_BUILDKIT: 1
   TIMEOUT: 30 # minutes
   FORCE_TIMEOUT: 1801 # seconds (TIMEOUT + 1 sec)
@@ -30,7 +28,7 @@ jobs:
         go-version: '^1.19.0'
 
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2.0.0
+      uses: aws-actions/configure-aws-credentials@v1.7.0
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -77,8 +75,8 @@ jobs:
 
     - name: Deploy
       env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
         SENTRY_DSN_STAGING: ${{ secrets.SENTRY_DSN_STAGING }}
         SENTRY_DSN_PRODUCTION: ${{ secrets.SENTRY_DSN_PRODUCTION }}
