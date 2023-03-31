@@ -477,7 +477,11 @@ func (h *Handlers) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) verify(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
-	api := api.NewAPI(api.LndGrpc, func() (*entities.Data, error) { return data, nil })
+	api, err := api.NewAPI(api.LndGrpc, func() (*entities.Data, error) { return data, nil })
+	if err != nil {
+		h.badRequest(w, r, "invalid credentials - check failed", fmt.Sprintf("failed to get lightning client, error %v", err))
+		return false
+	}
 	if api == nil {
 		h.badRequest(w, r, "invalid credentials - check failed", "failed to get lightning client")
 		return false
