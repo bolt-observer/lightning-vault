@@ -19,7 +19,9 @@ jobs:
 
       - name: Install golint
         run: |
-          sudo sed -i 's/azure\.//' /etc/apt/sources.list
+          sudo sed -i 's/azure\.//' /etc/apt/sources.list || true
+          sudo cat /etc/apt/sources.list || true
+          sudo apt-get update || true
           sudo apt-get install -y golint
 
       - name: Install and Run Pre-commit
