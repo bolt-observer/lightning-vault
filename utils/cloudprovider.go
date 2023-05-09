@@ -23,6 +23,7 @@ const (
 type URLCloudPair struct {
 	URL      string
 	Provider CloudProvider
+	Header   http.Header
 }
 
 // DetermineProvider tries to determine the cloud provider or uses CLOUD_PROVIDER environment variable
@@ -40,8 +41,10 @@ func DetermineProvider() CloudProvider {
 	}
 
 	pairs := []URLCloudPair{
-		{URL: "http://169.254.169.254/latest/dynamic/instance-identity/document", Provider: AWS},
-		{URL: "http://metadata.google.internal/computeMetadata/v1", Provider: GCP},
+		{URL: "http://169.254.169.254/latest/dynamic/instance-identity/document", Provider: AWS, Header: make(http.Header)},
+		{URL: "http://metadata.google.internal/computeMetadata/v1", Provider: GCP, Header: http.Header{
+			"Metadata-Flavor": {"Google"},
+		}},
 	}
 
 	for _, pair := range pairs {
@@ -52,6 +55,9 @@ func DetermineProvider() CloudProvider {
 		}
 
 		req.Header.Set("User-Agent", "lightning-vault")
+		for k, v := range pair.Header {
+			req.Header.Set(k, v[0])
+		}
 
 		resp, err := client.Do(req)
 		if err != nil {
