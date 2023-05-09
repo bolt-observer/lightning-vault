@@ -24,7 +24,7 @@ func TestMainHandler(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "https://localhost", nil)
 	w := httptest.NewRecorder()
 
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 	h.MainHandler(w, r)
 
 	if want, got := http.StatusOK, w.Result().StatusCode; want != got {
@@ -46,7 +46,7 @@ func TestPutHandler(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "https://localhost/put/", nil)
 	w := httptest.NewRecorder()
 
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 
 	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
 		return true
@@ -70,7 +70,9 @@ func TestPutHandler(t *testing.T) {
 	w = httptest.NewRecorder()
 
 	wasCalled := false
-	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+	mgr := h.SecretsManager.(*local_utils.TestSecretsManager)
+
+	mgr.InsertOrUpdateSecretFn = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
 		wasCalled = true
 		return "", local_utils.Inserted, nil
 	}
@@ -89,7 +91,7 @@ func TestPutHandler(t *testing.T) {
 func TestPutHandlerWithNoApiType(t *testing.T) {
 	pubkey := "0367fa307a6e0ce29efadc4f7c4d1109ee689aa1e7bd442afd7270919f9e28c3b7"
 
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 
 	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
 		return true
@@ -110,7 +112,8 @@ func TestPutHandlerWithNoApiType(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "https://localhost/put", strings.NewReader(valid))
 	w := httptest.NewRecorder()
 
-	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+	mgr := h.SecretsManager.(*local_utils.TestSecretsManager)
+	mgr.InsertOrUpdateSecretFn = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
 		return "", local_utils.Inserted, nil
 	}
 
@@ -139,7 +142,7 @@ func TestPutHandlerInvalidAuthenticator(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "https://localhost/put/", nil)
 	w := httptest.NewRecorder()
 
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 
 	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
 		return true
@@ -164,7 +167,8 @@ func TestPutHandlerInvalidAuthenticator(t *testing.T) {
 	r = httptest.NewRequest(http.MethodPost, "https://localhost/put", strings.NewReader(valid))
 	w = httptest.NewRecorder()
 
-	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+	mgr := h.SecretsManager.(*local_utils.TestSecretsManager)
+	mgr.InsertOrUpdateSecretFn = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
 		return "", local_utils.Inserted, nil
 	}
 
@@ -185,9 +189,10 @@ func TestUniqueId(t *testing.T) {
 		"tags": "test"
 	  }
 	`
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 
-	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+	mgr := h.SecretsManager.(*local_utils.TestSecretsManager)
+	mgr.InsertOrUpdateSecretFn = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
 		return "", local_utils.Inserted, nil
 	}
 	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueId string) bool {
@@ -260,7 +265,7 @@ func TestReadMyWriteRune(t *testing.T) {
 }
 
 func readMyWrite(t *testing.T, pubKey, origMac string) {
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 	prometheusInit()
 
 	// Don't worry macaroon is fake
@@ -277,7 +282,9 @@ func readMyWrite(t *testing.T, pubKey, origMac string) {
 	w := httptest.NewRecorder()
 
 	saveCalled := false
-	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+	mgr := h.SecretsManager.(*local_utils.TestSecretsManager)
+
+	mgr.InsertOrUpdateSecretFn = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
 		saveCalled = true
 		return "", local_utils.Inserted, nil
 	}
@@ -287,7 +294,7 @@ func readMyWrite(t *testing.T, pubKey, origMac string) {
 
 	deleteCalled := false
 
-	h.DeleteCall = func(ctx context.Context, name string) (string, error) {
+	mgr.DeleteSecretFn = func(ctx context.Context, name string) (string, error) {
 		deleteCalled = true
 		return "", nil
 	}
@@ -523,13 +530,14 @@ func getBody(w *httptest.ResponseRecorder) string {
 }
 
 func TestPutHandlerNeedsCert(t *testing.T) {
-	h := MakeNewHandlers()
+	h := MakeNewDummyHandlers()
 
 	h.VerifyCall = func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool {
 		return true
 	}
 
-	h.AddCall = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
+	mgr := h.SecretsManager.(*local_utils.TestSecretsManager)
+	mgr.InsertOrUpdateSecretFn = func(ctx context.Context, name, value string) (string, local_utils.Change, error) {
 		return "", local_utils.Inserted, nil
 	}
 

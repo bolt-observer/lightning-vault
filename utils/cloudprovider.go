@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -71,4 +73,41 @@ func DetermineProvider() CloudProvider {
 	}
 
 	return UnknownProvider
+}
+
+// GetGCPProjectID - get GCP project id from workstation
+func GetGCPProjectID() (string, error) {
+	id := os.Getenv("GCP_PROJECT_ID")
+	if id != "" {
+		return id, nil
+	}
+
+	client := http.Client{
+		Timeout: time.Second * 3,
+	}
+
+	req, err := http.NewRequest("GET", "http://metadata.google.internal/computeMetadata/v1/project/project-id", nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("User-Agent", "lightning-vault")
+	req.Header.Set("Metadata-Flavor", "Google")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad status code %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
 }
