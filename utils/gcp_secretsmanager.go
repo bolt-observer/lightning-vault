@@ -221,6 +221,12 @@ func listSecretsGcp(ctx context.Context, prefix string) []string {
 }
 
 func getSecretGcp(ctx context.Context, name string) (string, string, error) {
+	project, err := GetGCPProjectID()
+	if err != nil {
+		sentry.CaptureException(err)
+		glog.Errorf("unable to load project: %v", err)
+		return "", "", err
+	}
 	client, err := sapi.NewClient(ctx)
 	if err != nil {
 		sentry.CaptureException(err)
@@ -231,7 +237,7 @@ func getSecretGcp(ctx context.Context, name string) (string, string, error) {
 	defer client.Close()
 
 	req := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: name + "/versions/latest",
+		Name: fmt.Sprintf("projects/%s/secrets/%s/versions/latest", project, name),
 	}
 
 	result, err := client.AccessSecretVersion(ctx, req)
