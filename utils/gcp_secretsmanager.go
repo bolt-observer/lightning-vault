@@ -183,14 +183,18 @@ func listSecretsGcp(ctx context.Context, prefix string) []string {
 
 	defer client.Close()
 
-	result := &sapi.SecretIterator{}
+	var result *sapi.SecretIterator = nil
 
 	for {
+		token := ""
+		if result != nil {
+			token = result.PageInfo().Token
+		}
 		input := &secretmanagerpb.ListSecretsRequest{
 			Parent:    fmt.Sprintf("projects/%s", project),
 			Filter:    fmt.Sprintf("name:%s*", prefix),
 			PageSize:  100,
-			PageToken: result.PageInfo().Token,
+			PageToken: token,
 		}
 
 		result = client.ListSecrets(ctx, input)
@@ -204,7 +208,7 @@ func listSecretsGcp(ctx context.Context, prefix string) []string {
 			}
 		}
 
-		if result.PageInfo().Token == "" {
+		if result == nil || result.PageInfo().Token == "" {
 			break
 		}
 	}
