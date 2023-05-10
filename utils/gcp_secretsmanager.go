@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"path/filepath"
+
 	sapi "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	backoff "github.com/cenkalti/backoff/v4"
@@ -192,7 +194,7 @@ func listSecretsGcp(ctx context.Context, prefix string) []string {
 		}
 		input := &secretmanagerpb.ListSecretsRequest{
 			Parent:    fmt.Sprintf("projects/%s", project),
-			Filter:    fmt.Sprintf("name:%s*", prefix),
+			Filter:    fmt.Sprintf("name:%s", prefix),
 			PageSize:  100,
 			PageToken: token,
 		}
@@ -200,11 +202,13 @@ func listSecretsGcp(ctx context.Context, prefix string) []string {
 		result = client.ListSecrets(ctx, input)
 		for {
 			data, err := result.Next()
-			if err == iterator.Done {
+			if data == nil || err == iterator.Done {
 				break
 			}
-			if strings.HasPrefix(data.Name, prefix) {
-				ret = append(ret, data.Name)
+
+			name := getLastSegment(data.Name)
+			if strings.HasPrefix(name, prefix) {
+				ret = append(ret, name)
 			}
 		}
 
@@ -238,4 +242,8 @@ func getSecretGcp(ctx context.Context, name string) (string, string, error) {
 	}
 
 	return name, string(result.Payload.Data), nil
+}
+
+func getLastSegment(path string) string {
+	return filepath.Base(path)
 }
