@@ -113,7 +113,7 @@ func (h *Handlers) deleteLookup(data entities.Data, uniqueID string) {
 func (h *Handlers) initialLoad() {
 	glog.Info("Initial load of keys from secrets manager...")
 	ctx := context.Background()
-	secrets := local_utils.LoadSecrets(ctx, prefix)
+	secrets := h.SecretsManager.LoadSecrets(ctx, prefix)
 
 	for k, v := range secrets {
 		if v == "{}" {
@@ -169,7 +169,6 @@ func main() {
 		h := MakeNewHandlers()
 		h.httpListen(true)
 	}
-
 }
 
 func (h *Handlers) httpListen(load bool) {

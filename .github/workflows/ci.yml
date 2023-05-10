@@ -18,7 +18,10 @@ jobs:
         run: go get ./...
 
       - name: Install golint
-        run: sudo apt-get install -y golint
+        run: |
+          sudo sed -i 's/azure\.//' /etc/apt/sources.list || true
+          sudo apt-get update || true
+          sudo apt-get install -y golint
 
       - name: Install and Run Pre-commit
         uses: pre-commit/action@v3.0.0

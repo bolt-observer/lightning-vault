@@ -22,19 +22,19 @@ import (
 
 // Handlers struct (all method used by HTTP handlers)
 type Handlers struct {
-	AddCall    local_utils.InsertOrUpdateSecretSignature
-	DeleteCall local_utils.DeleteSecretSignature
 	VerifyCall func(w http.ResponseWriter, r *http.Request, data *entities.Data, pubkey, uniqueID string) bool
 	Lookup     map[string]entities.Data
+
+	SecretsManager local_utils.SecretsManager
 }
 
 // MakeNewHandlers - creates new Handlers
 func MakeNewHandlers() *Handlers {
 	r := &Handlers{
-		AddCall:    local_utils.InsertOrUpdateSecretWithRetries,
-		DeleteCall: local_utils.InvalidateSecretWithRetries,
-		Lookup:     make(map[string]entities.Data),
+		Lookup: make(map[string]entities.Data),
 	}
+
+	r.SecretsManager = local_utils.GetPlatformSecretsManager()
 
 	r.VerifyCall = r.verify
 	return r
@@ -43,10 +43,10 @@ func MakeNewHandlers() *Handlers {
 // MakeNewDummyHandlers - create new Handlers that have external calls mocked
 func MakeNewDummyHandlers() *Handlers {
 	r := &Handlers{
-		AddCall:    local_utils.InsertSecretDummy,
-		DeleteCall: local_utils.InvalidateSecretDummy,
-		Lookup:     make(map[string]entities.Data),
+		Lookup: make(map[string]entities.Data),
 	}
+
+	r.SecretsManager = local_utils.SecretsManager(local_utils.NewTestSecretsManager())
 
 	r.VerifyCall = r.verify
 	return r
@@ -121,7 +121,7 @@ func (h *Handlers) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DeleteCall(ctx, fmt.Sprintf("%s_%s%s_", prefix, e.PubKey, uniqueID))
+	_, err = h.SecretsManager.DeleteSecret(ctx, fmt.Sprintf("%s_%s%s_", prefix, e.PubKey, uniqueID))
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -417,7 +417,7 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 
 	h.toLookup(data, uniqueID)
 
-	_, status, err := h.AddCall(ctx, fmt.Sprintf("%s_%s%s_", prefix, data.PubKey, uniqueID), result.String())
+	_, status, err := h.SecretsManager.InsertOrUpdateSecret(ctx, fmt.Sprintf("%s_%s%s_", prefix, data.PubKey, uniqueID), result.String())
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
