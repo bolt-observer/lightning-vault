@@ -158,7 +158,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: '0'
     - name: Github Tag Bump
-      uses: anothrNick/github-tag-action@1.64.0
+      uses: anothrNick/github-tag-action@1.65.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         WITH_V: true
