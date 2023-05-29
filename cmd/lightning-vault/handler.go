@@ -410,8 +410,17 @@ func (h *Handlers) PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	verifyQuery, err := strconv.ParseBool(r.URL.Query().Get("verify"))
+	if err != nil {
+		verifyQuery = true
+	}
+
 	verify, err := strconv.ParseBool(utils.GetEnvWithDefault("VERIFY", "true"))
-	if err == nil && verify && !h.VerifyCall(w, r, &data, data.PubKey, uniqueID) {
+	if err != nil {
+		verify = true
+	}
+
+	if verify && verifyQuery && !h.VerifyCall(w, r, &data, data.PubKey, uniqueID) {
 		return
 	}
 

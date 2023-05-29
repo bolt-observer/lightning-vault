@@ -98,6 +98,39 @@ func (h *Handlers) toLookup(data entities.Data, uniqueID string) {
 	h.Lookup[data.PubKey+uniqueID] = data
 }
 
+// NodeData struct.
+type NodeData struct {
+	UniqueID string
+	Data     entities.Data
+}
+
+func (h *Handlers) allNodes() <-chan NodeData {
+	glog.Info("All nodes")
+	ch := make(chan NodeData)
+
+	go func() {
+		defer close(ch)
+
+		for k, v := range h.Lookup {
+			if len(k) < utils.PUBKEY_LEN {
+				continue
+			}
+
+			pubkey := k[0:utils.PUBKEY_LEN]
+
+			if !utils.ValidatePubkey(pubkey) {
+				continue
+			}
+
+			uniqueID := k[utils.PUBKEY_LEN:]
+
+			ch <- NodeData{UniqueID: uniqueID, Data: v}
+		}
+	}()
+
+	return ch
+}
+
 func (h *Handlers) deleteLookup(data entities.Data, uniqueID string) {
 	if data.Tags != "" {
 		for _, v := range strings.Split(data.Tags, local_utils.Delimiter) {
@@ -145,6 +178,29 @@ func (h *Handlers) initialLoad() {
 	}
 
 	glog.Info("Initial load of keys from secrets manager... done")
+
+	if os.Getenv("DUMP") != "" {
+		for node := range h.allNodes() {
+			dump(node)
+		}
+	}
+}
+
+func dump(data NodeData) error {
+	file, err := os.Create(fmt.Sprintf("%s_%s.json", data.Data.PubKey, data.UniqueID))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+
+	err = encoder.Encode(data.Data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var (
@@ -172,7 +228,6 @@ func main() {
 }
 
 func (h *Handlers) httpListen(load bool) {
-
 	readDurations = make(map[string]time.Duration)
 
 	for _, key := range strings.Split(utils.GetEnv("READ_API_KEY_10M"), local_utils.Delimiter) {
