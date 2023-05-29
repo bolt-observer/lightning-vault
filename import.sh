@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
+
+## Tool used to import json dumps to vault (e.g., during a migration)
+
+# JSON looks like
+# {
+#  "pubkey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+#  "macaroon_hex": "020103aaaaaa",
+#  "certificate_base64": "LS0tLS1...",
+#  "endpoint": "127.0.0.1:10009",
+#
 
 for file in *.json; do
   one=$(basename $file | cut -d "." -f 1)
